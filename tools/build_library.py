@@ -22,14 +22,25 @@ sidecar wins, because it is the copy a user edits. The chosen text (BOM stripped
 otherwise as found) goes to <out>/lyrics/<trackId>.lrc and the track gets "lyrics": "synced" | "plain".
 Files are rewritten only when their content changes, and stale ones are removed.
 
+Spectrogram and authenticity (tools/quality.py has the details and limits): each decodable track gets a
+1200x400 spectrogram at <out>/spectra/<trackId>.webp (.png when ffmpeg lacks libwebp), "spectrum": true,
+and "quality": {"verdict": "lossless" | "upsampled" | "lossy" | "unknown", "cutoffHz", "effectiveBits"?,
+"source"?, "confidence"}; stats.quality counts the verdicts. A lossy verdict means the file shows a lossy
+encoder's low-pass or MP3's flickering top band; upsampled means a hi-res file with no content above the
+44.1/48k band or a 24-bit file whose samples use only 16 bits. Results are cached in
+<out>/quality-cache.json under the same file, size and mtime key as the waveforms.
+
 Requires ffmpeg and ffprobe on PATH. Python 3.9+, standard library only.
 """
 import argparse, array, base64, collections, hashlib, json, math, os, re, subprocess, sys, unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
+import quality
+
 AUDIO_EXTENSIONS = (".flac", ".m4a", ".mp3", ".wav", ".aiff", ".aif", ".ogg", ".opus")
 PEAK_BINS = 96
 PEAKS_CACHE_VERSION = 1
+QUALITY_CACHE_VERSION = 1
 LRC_LINE = re.compile(r"^(?:\[\d{1,3}:[0-5]\d(?:[.:]\d{1,3})?\])+")
 LRC_TAG = re.compile(r"\[[^\]]*\]|<\d{1,3}:\d\d(?:[.:]\d{1,3})?>")
 # Whole-text placeholders some taggers write instead of lyrics; matched against fold() of the only line.
@@ -196,19 +207,47 @@ def load_peaks_cache(path):
     return data.get("entries", {}) if data.get("version") == PEAKS_CACHE_VERSION else {}
 
 
-def index_file(root, key, cache, fresh):
+def load_quality_cache(path):
+    try:
+        with open(path, encoding="utf-8") as f:
+            data = json.load(f)
+    except (OSError, ValueError):
+        return {}
+    return data.get("entries", {}) if data.get("version") == QUALITY_CACHE_VERSION else {}
+
+
+def analyse_quality(root, track, spectra_dir):
+    """{"quality": ..., "spectrum": "webp" | "png" | None}; writes <spectra_dir>/<id>.<ext>."""
+    verdict, picture, ext = quality.analyse(os.path.join(root, track["file"]), sr=track["sr"], bits=track["bits"],
+                                            codec=track["codec"], dur=track["dur"])
+    for old in ("webp", "png"):
+        if old != ext and os.path.exists(os.path.join(spectra_dir, f"{track['id']}.{old}")):
+            os.remove(os.path.join(spectra_dir, f"{track['id']}.{old}"))
+    if picture is not None:
+        with open(os.path.join(spectra_dir, f"{track['id']}.{ext}"), "wb") as f:
+            f.write(picture)
+    return {"quality": verdict, "spectrum": ext}
+
+
+def index_file(root, key, caches, fresh, spectra_dir):
     track = probe(root, key)
     if track is None:
         return None
     cache_key = peaks_cache_key(root, key)
-    if cache_key in cache:
-        peaks = cache[cache_key]
+    if cache_key in caches["peaks"]:
+        peaks = caches["peaks"][cache_key]
     else:
         peaks = compute_peaks(os.path.join(root, key))
         if peaks is not None:
-            fresh[cache_key] = peaks
+            fresh["peaks"][cache_key] = peaks
+    analysis = caches["quality"].get(cache_key)
+    if analysis is None or (analysis["spectrum"] and
+                            not os.path.exists(os.path.join(spectra_dir, f"{track['id']}.{analysis['spectrum']}"))):
+        analysis = analyse_quality(root, track, spectra_dir)
+        fresh["quality"][cache_key] = analysis
     track["_peaks"] = peaks
-    track["_peaksKey"] = cache_key
+    track["_analysis"] = analysis
+    track["_cacheKey"] = cache_key
     return track
 
 
@@ -244,22 +283,33 @@ def main():
 
     root = os.path.abspath(args.music_dir)
     covers_dir = os.path.join(args.out, "covers")
+    spectra_dir = os.path.join(args.out, "spectra")
     os.makedirs(covers_dir, exist_ok=True)
+    os.makedirs(spectra_dir, exist_ok=True)
 
     keys = sorted(
         os.path.relpath(os.path.join(d, f), root).replace(os.sep, "/")
         for d, _, files in os.walk(root) for f in files
         if f.lower().endswith(AUDIO_EXTENSIONS) and not f.startswith("."))
     peaks_cache_path = os.path.join(args.out, "peaks-cache.json")
-    cache, fresh = load_peaks_cache(peaks_cache_path), {}
+    quality_cache_path = os.path.join(args.out, "quality-cache.json")
+    caches = {"peaks": load_peaks_cache(peaks_cache_path), "quality": load_quality_cache(quality_cache_path)}
+    fresh = {"peaks": {}, "quality": {}}
     with ThreadPoolExecutor(args.jobs) as pool:
-        tracks = [t for t in pool.map(lambda k: index_file(root, k, cache, fresh), keys) if t]
+        tracks = [t for t in pool.map(lambda k: index_file(root, k, caches, fresh, spectra_dir), keys) if t]
     if not tracks:
         sys.exit(f"no audio files found under {root}")
-    # Keep only entries for files that still exist, so the cache never grows without bound.
-    kept = {t["_peaksKey"]: t["_peaks"] for t in tracks if t["_peaks"] is not None}
+    # Keep only entries for files that still exist, so the caches never grow without bound.
+    kept = {t["_cacheKey"]: t["_peaks"] for t in tracks if t["_peaks"] is not None}
     with open(peaks_cache_path, "w", encoding="utf-8") as f:
         json.dump({"version": PEAKS_CACHE_VERSION, "entries": kept}, f, ensure_ascii=False, separators=(",", ":"))
+    kept = {t["_cacheKey"]: t["_analysis"] for t in tracks}
+    with open(quality_cache_path, "w", encoding="utf-8") as f:
+        json.dump({"version": QUALITY_CACHE_VERSION, "entries": kept}, f, ensure_ascii=False, separators=(",", ":"))
+    wanted = {f"{t['id']}.{t['_analysis']['spectrum']}" for t in tracks if t["_analysis"]["spectrum"]}
+    for name in os.listdir(spectra_dir):
+        if name not in wanted:
+            os.remove(os.path.join(spectra_dir, name))
 
     groups = collections.defaultdict(list)
     for t in tracks:
@@ -291,31 +341,39 @@ def main():
         album["cover"] = album["id"] in with_cover
     lyrics_written, lyrics_removed = write_lyrics(os.path.join(args.out, "lyrics"), tracks)
     for t in tracks:
-        peaks, lyrics = t["_peaks"], t["_lyrics"][1]
-        for k in ("_cover", "albumTitle", "albumArtist", "_peaks", "_peaksKey", "_lyrics"):
+        peaks, lyrics, analysis = t["_peaks"], t["_lyrics"][1], t["_analysis"]
+        for k in ("_cover", "albumTitle", "albumArtist", "_peaks", "_cacheKey", "_lyrics", "_analysis"):
             del t[k]
         if peaks is not None:
             t["peaks"] = peaks
         if lyrics:
             t["lyrics"] = lyrics
+        if analysis["spectrum"]:
+            t["spectrum"] = True
+        t["quality"] = analysis["quality"]
     with_lyrics = sum(1 for t in tracks if "lyrics" in t)
     synced = sum(1 for t in tracks if t.get("lyrics") == "synced")
+    verdicts = collections.Counter(t["quality"]["verdict"] for t in tracks)
 
     albums.sort(key=lambda a: (fold(a["artist"]), fold(a["title"])))
     library = {
         "version": hashlib.sha1("\n".join(t["file"] for t in tracks).encode()).hexdigest()[:10],
         "stats": {"tracks": len(tracks), "albums": len(albums), "bytes": sum(t["size"] for t in tracks),
-                  "seconds": round(sum(t["dur"] for t in tracks)), "lyrics": with_lyrics},
+                  "seconds": round(sum(t["dur"] for t in tracks)), "lyrics": with_lyrics,
+                  "quality": {v: verdicts[v] for v in quality.VERDICTS}},
         "albums": albums,
         "tracks": tracks,
     }
     with open(os.path.join(args.out, "library.json"), "w", encoding="utf-8") as f:
         json.dump(library, f, ensure_ascii=False, separators=(",", ":"))
     with_peaks = sum(1 for t in tracks if "peaks" in t)
+    with_spectrum = sum(1 for t in tracks if t.get("spectrum"))
     print(f"{len(tracks)} tracks, {len(albums)} albums, {len(with_cover)} covers, "
-          f"{with_peaks} waveforms ({len(fresh)} decoded, {with_peaks - len(fresh)} cached), "
-          f"{with_lyrics} lyrics ({synced} synced; {lyrics_written} written, {lyrics_removed} removed) "
-          f"-> {os.path.abspath(args.out)}")
+          f"{with_peaks} waveforms ({len(fresh['peaks'])} decoded, {with_peaks - len(fresh['peaks'])} cached), "
+          f"{with_lyrics} lyrics ({synced} synced; {lyrics_written} written, {lyrics_removed} removed), "
+          f"{with_spectrum} spectrograms ({len(fresh['quality'])} analysed), "
+          + ", ".join(f"{verdicts[v]} {v}" for v in quality.VERDICTS)
+          + f" -> {os.path.abspath(args.out)}")
 
 
 if __name__ == "__main__":

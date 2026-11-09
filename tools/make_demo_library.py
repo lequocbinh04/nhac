@@ -9,13 +9,18 @@ Writes <out>/<Album artist>/<Album>/<NN - Title>.flac with full tags (title, art
 album_artist, track, disc, date, genre) and the cover embedded, in a realistic spread of formats:
 16-bit/44.1 kHz, 24/48, 24/96 and one 24/192 album. Output is deterministic for a given script version.
 
+Besides the tonal parts (synthesised at 24 kHz, below 6 kHz) every track carries a soft noise shaker,
+generated at the album's own rate, so genuine files have content up to Nyquist like a real master. Two
+tracks are deliberately fake so the authenticity check has something to find (see FAKES): one went through
+MP3 128k before being saved as FLAC, and one 24/96 track was rendered at 16-bit/44.1 kHz and resampled.
+
 Eight tracks carry original lyrics written for this demo (see LYRICS): six embedded synced LRC whose
 timestamps are spread over each track's real duration, one embedded plain text, and one sidecar .lrc
 next to the audio file.
 
-Requires ffmpeg on PATH. Python 3.9+, standard library only.
+Requires ffmpeg (with libmp3lame) on PATH. Python 3.9+, standard library only.
 """
-import argparse, os, random, shutil, subprocess, sys, time
+import argparse, os, random, shutil, subprocess, sys, tempfile, time
 from concurrent.futures import ThreadPoolExecutor
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -123,6 +128,11 @@ LYRICS = {
     ]),
 }
 
+# (album slug, track index) -> how the track is faked. "mp3": encoded to MP3 128k, then decoded into the
+# FLAC (lossy, ~16 kHz cutoff). "from-44.1k": rendered at 16-bit/44.1 kHz, then resampled to the album's
+# 24/96 (upsampled: nothing above ~22 kHz).
+FAKES = {("mua-vang-tren-pho", 1): "mp3", ("static-bloom", 4): "from-44.1k"}
+
 
 def lyrics_text(kind, lines, dur):
     """LRC with lines spread over the sung part of the track, or plain text for kind == "plain"."""
@@ -186,6 +196,14 @@ def channel_expr(rng, album, dur, detune, pan):
     return f"{pad}+{arp}"
 
 
+def shaker_expr(album):
+    """Envelope for the noise shaker: an eighth-note pulse with a short decay, accented on the beat."""
+    beat = 60 / album["bpm"]
+    step = beat / 2
+    accent = f"(0.6+0.4*eq(mod(floor(t/{step:.5f}),2),0))"
+    return f"val(0)*0.045*{accent}*exp(-mod(t,{step:.5f})/{step * 0.16:.5f})"
+
+
 def render(job):
     album, idx, title, path, dur, cover, disc, n, lyrics = job
     rng = random.Random(f"{album['slug']}/{idx}")
@@ -193,36 +211,58 @@ def render(job):
     seed = rng.random()
     left = channel_expr(random.Random(seed), album, dur, 1.0, 1)
     right = channel_expr(random.Random(seed), album, dur, 1.0018, -1)
-    sample_fmt = "s16" if album["bits"] == 16 else "s32"
+    fake = FAKES.get((album["slug"], idx))
+    rate, bits = (44100, 16) if fake == "from-44.1k" else (album["sr"], album["bits"])
+    shaker = shaker_expr(album)
     graph = (f"aevalsrc=exprs='{left}|{right}':s={SYNTH_RATE}:d={dur},"
              f"lowpass=f=5200,aecho=0.8:0.6:{int(rng.uniform(180, 320))}|{int(rng.uniform(380, 560))}:0.28|0.18,"
+             f"aresample={rate}[tone];"
+             f"anoisesrc=r={rate}:c=white:seed={int(seed * 1e9)}:d={dur},highpass=f=7000:p=2,highpass=f=7000:p=2,"
+             f"aeval=exprs='{shaker}|{shaker}':c=stereo[shaker];"
+             f"[tone][shaker]amix=inputs=2:normalize=0,"
              f"afade=t=in:d=1.5,afade=t=out:st={dur - 3.5}:d=3.5,volume=2,alimiter=limit=0.9:level=false,"
-             f"aresample={album['sr']},aformat=sample_fmts={sample_fmt}[a]")
+             f"aformat=sample_fmts={'s16' if bits == 16 else 's32'}[a]")
     discs = album.get("discs") or [len(album["tracks"])]
     artist = album["artist"] + (f"; {album['features'][idx]}" if idx in album.get("features", {}) else "")
     tags = {"title": title, "artist": artist, "album": album["title"], "album_artist": album["artist"],
             "track": f"{n}/{discs[disc - 1]}", "disc": f"{disc}/{len(discs)}", "date": album["year"],
             "genre": album["genre"]}
-    cmd = ["ffmpeg", "-v", "error", "-y", "-i", cover, "-filter_complex", graph, "-map", "[a]", "-map", "0:v",
-           "-c:a", "flac", "-compression_level", "8", "-c:v", "copy", "-disposition:v", "attached_pic",
-           "-metadata:s:v", "comment=Cover (front)"]
-    if album["bits"] == 24:
-        cmd += ["-bits_per_raw_sample", "24"]
-    for k, v in tags.items():
-        cmd += ["-metadata", f"{k}={v}"]
-    if lyrics and lyrics[0] != "sidecar":
-        cmd += ["-metadata", f"LYRICS={lyrics_text(lyrics[0], lyrics[1], dur)}"]
     os.makedirs(os.path.dirname(path), exist_ok=True)
-    sidecar = os.path.splitext(path)[0] + ".lrc"
-    if lyrics and lyrics[0] == "sidecar":
-        with open(sidecar, "w", encoding="utf-8", newline="\n") as f:
-            f.write(lyrics_text("synced", lyrics[1], dur))
-    elif os.path.exists(sidecar):
-        os.remove(sidecar)
-    result = subprocess.run(cmd + [path], capture_output=True, text=True)
+    with tempfile.TemporaryDirectory() as tmp:
+        if fake:
+            # Render the audio alone through the fake's detour, then re-encode it as the album's FLAC below.
+            detour = os.path.join(tmp, "detour.mp3" if fake == "mp3" else "detour.flac")
+            codec = ["-c:a", "libmp3lame", "-b:a", "128k"] if fake == "mp3" else ["-c:a", "flac"]
+            run(["ffmpeg", "-v", "error", "-y", "-filter_complex", graph, "-map", "[a]", *codec, detour], detour)
+            inputs = ["-i", cover, "-i", detour]
+            # A long, steep resampling filter, like the upsamplers used to make fake hi-res releases.
+            graph = (f"[1:a]aresample={album['sr']}:filter_size=128:cutoff=0.98,"
+                     f"aformat=sample_fmts={'s16' if album['bits'] == 16 else 's32'}[a]")
+        else:
+            inputs = ["-i", cover]
+        cmd = ["ffmpeg", "-v", "error", "-y", *inputs, "-filter_complex", graph, "-map", "[a]", "-map", "0:v",
+               "-c:a", "flac", "-compression_level", "8", "-c:v", "copy", "-disposition:v", "attached_pic",
+               "-metadata:s:v", "comment=Cover (front)"]
+        if album["bits"] == 24:
+            cmd += ["-bits_per_raw_sample", "24"]
+        for k, v in tags.items():
+            cmd += ["-metadata", f"{k}={v}"]
+        if lyrics and lyrics[0] != "sidecar":
+            cmd += ["-metadata", f"LYRICS={lyrics_text(lyrics[0], lyrics[1], dur)}"]
+        sidecar = os.path.splitext(path)[0] + ".lrc"
+        if lyrics and lyrics[0] == "sidecar":
+            with open(sidecar, "w", encoding="utf-8", newline="\n") as f:
+                f.write(lyrics_text("synced", lyrics[1], dur))
+        elif os.path.exists(sidecar):
+            os.remove(sidecar)
+        run(cmd + [path], path)
+    return path
+
+
+def run(cmd, path):
+    result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg failed for {path}:\n{result.stderr[-2000:]}")
-    return path
 
 
 def safe(name):
