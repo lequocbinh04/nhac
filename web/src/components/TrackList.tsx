@@ -11,7 +11,7 @@ import { toast } from "../lib/toast";
 import type { Track } from "../lib/types";
 import { useVirtual } from "../lib/virtual";
 import { Cover } from "./Cover";
-import { Highlight, PlayingBars } from "./bits";
+import { ArtistLinks, Highlight, PlayingBars } from "./bits";
 import { Icon } from "./icons";
 import { openMenu, type MenuItem } from "./Menu";
 
@@ -123,7 +123,7 @@ function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSiz
 				</span>
 				{showArtist && (
 					<span class="trow-artist">
-						<Highlight text={t.artist} spans={s?.[1]} />
+						<ArtistLinks text={t.artist} spans={s?.[1]} tabbable={false} />
 						{variant === "list" && album && (
 							<span class="trow-album-inline">
 								{" · "}

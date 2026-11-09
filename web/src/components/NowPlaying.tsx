@@ -10,7 +10,7 @@ import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
 import { nowPlayingOpen } from "../lib/ui";
 import { Cover } from "./Cover";
-import { Quality } from "./bits";
+import { ArtistLinks, Quality } from "./bits";
 import { Icon } from "./icons";
 import { LevelMeter } from "./Meter";
 import { Seekbar } from "./Seekbar";
@@ -188,7 +188,6 @@ export function NowPlaying() {
 		};
 	}, []);
 
-	const artist = info?.artists[0];
 	return (
 		<div
 			ref={sheet}
@@ -227,21 +226,9 @@ export function NowPlaying() {
 						<div class="np-side">
 							<div class="np-titles">
 								<h2 class="np-title">{tr.title}</h2>
-								{artist ? (
-									<a
-										class="np-artist"
-										href={href.artist(artist.key)}
-										onClick={(e) => {
-											e.preventDefault();
-											close();
-											navigate(href.artist(artist.key), { keyboard: e.detail === 0 });
-										}}
-									>
-										{tr.artist}
-									</a>
-								) : (
-									<span class="np-artist">{tr.artist}</span>
-								)}
+								<span class="np-artist">
+									<ArtistLinks text={tr.artist} onNavigate={close} />
+								</span>
 								<Quality track={tr} />
 							</div>
 							<div class="np-seek">

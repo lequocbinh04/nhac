@@ -9,7 +9,7 @@ import { onFrame } from "../lib/ticker";
 import { nowPlayingOpen } from "../lib/ui";
 import { trackSpec } from "../lib/format";
 import { Cover } from "./Cover";
-import { Quality } from "./bits";
+import { ArtistLinks, Quality } from "./bits";
 import { Icon } from "./icons";
 import { Seekbar } from "./Seekbar";
 import { PlayButton, Time, Transport } from "./Transport";
@@ -67,13 +67,7 @@ export function PlayerBar() {
 								{tr.title}
 							</a>
 							<span class="pb-artist">
-								{info?.artists[0] ? (
-									<a href={href.artist(info.artists[0].key)} class="link-quiet">
-										{tr.artist}
-									</a>
-								) : (
-									tr.artist
-								)}
+								<ArtistLinks text={tr.artist} />
 							</span>
 						</div>
 					</>

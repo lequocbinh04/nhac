@@ -1,6 +1,6 @@
 import { useRef, useState } from "preact/hooks";
 import { Cover } from "../components/Cover";
-import { Empty, PlayingBars } from "../components/bits";
+import { ArtistLinks, Empty, PlayingBars } from "../components/bits";
 import { Icon } from "../components/icons";
 import { formatTime, trackSpec } from "../lib/format";
 import { dict } from "../lib/i18n";
@@ -76,7 +76,9 @@ function QueueRow({
 			<Cover albumId={track.albumId} hasCover={!!info?.album.cover} size={44} />
 			<span class="trow-text" aria-hidden="true">
 				<span class="trow-title">{track.title}</span>
-				<span class="trow-artist">{track.artist}</span>
+				<span class="trow-artist">
+					<ArtistLinks text={track.artist} tabbable={false} />
+				</span>
 			</span>
 			<span class="trow-spec mono" aria-hidden="true">
 				{trackSpec(track)}

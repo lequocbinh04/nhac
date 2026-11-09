@@ -1,5 +1,5 @@
 import { Cover } from "../components/Cover";
-import { Empty } from "../components/bits";
+import { ArtistLinks, Empty } from "../components/bits";
 import { Icon } from "../components/icons";
 import { openMenu } from "../components/Menu";
 import { TrackList } from "../components/TrackList";
@@ -68,16 +68,7 @@ export function AlbumView({ id }: { id: string }) {
 					{a.title}
 				</h1>
 				<div class="album-meta">
-					{info.artists.length
-						? info.artists.map((ar, i) => (
-								<span key={ar.key}>
-									{i > 0 && ", "}
-									<a class="link-quiet" href={href.artist(ar.key)}>
-										{ar.name}
-									</a>
-								</span>
-							))
-						: a.artist}
+					<ArtistLinks text={a.artist} />
 					{meta.map((m) => (
 						<span key={m}> · {m}</span>
 					))}

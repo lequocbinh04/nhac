@@ -98,8 +98,17 @@
 	white-space: nowrap;
 }
 
-.link-quiet {
+.link-quiet,
+.artist-link {
 	color: inherit;
+}
+
+/* Artist names inside rows stay clickable above the row's own hit area. */
+.trow .artist-link,
+.qrow .artist-link {
+	position: relative;
+	z-index: 2;
+	pointer-events: auto;
 }
 
 .play-btn {
@@ -185,6 +194,7 @@
 		color: var(--acc);
 	}
 	.link-quiet:hover,
+	.artist-link:hover,
 	a.pb-title:hover {
 		text-decoration: underline;
 		text-underline-offset: 3px;
