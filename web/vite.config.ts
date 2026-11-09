@@ -1,13 +1,14 @@
 import { defineConfig } from "vitest/config";
 import preact from "@preact/preset-vite";
 import { resolve } from "node:path";
+import { nhacDevServer } from "./dev-server";
 
 const root = resolve(__dirname);
 const worker = "http://127.0.0.1:8787";
 
 export default defineConfig({
 	root,
-	plugins: [preact()],
+	plugins: [preact(), nhacDevServer()],
 	build: {
 		outDir: resolve(root, "../public"),
 		emptyOutDir: true,
