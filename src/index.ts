@@ -80,6 +80,15 @@ function trackKey(path: string, libraryPrefix: string): string | null {
 	}
 }
 
+// Post-login destination: must resolve to this origin (URL parsing strips tabs/newlines, so
+// "/\t/evil.com" would become protocol-relative; compare origins after parsing instead of prefixes).
+function safeNext(value: string | null, base: URL): string {
+	if (!value || !value.startsWith("/")) return "/";
+	const target = new URL(value, base);
+	if (target.origin !== base.origin || target.pathname.startsWith("/login")) return "/";
+	return target.pathname + target.search + target.hash;
+}
+
 export default {
 	async fetch(request, env): Promise<Response> {
 		const url = new URL(request.url);
@@ -88,7 +97,9 @@ export default {
 
 		if (path === "/api/login" && request.method === "POST") return handleLogin(request, env);
 		if (PUBLIC_PATHS[path] || path.startsWith(PUBLIC_PREFIX)) {
-			if (path === "/login" && (await validSession(env, request))) return Response.redirect(new URL("/", url).toString(), 302);
+			if (path === "/login" && (await validSession(env, request))) {
+				return Response.redirect(new URL(safeNext(url.searchParams.get("next"), url), url).toString(), 302);
+			}
 			// The assets layer serves login.html at /login itself (and redirects /login.html -> /login).
 			return env.ASSETS.fetch(request);
 		}
@@ -97,7 +108,9 @@ export default {
 			if (path.startsWith("/api/") || path.startsWith("/stream/") || path.startsWith("/cover/")) {
 				return json({ error: "unauthorized" }, 401);
 			}
-			return Response.redirect(new URL("/login", url).toString(), 302);
+			const login = new URL("/login", url);
+			if (path !== "/") login.searchParams.set("next", path + url.search);
+			return Response.redirect(login.toString(), 302);
 		}
 
 		if (path === "/api/logout" && request.method === "POST") {

@@ -131,7 +131,11 @@ form.addEventListener("submit", async (e) => {
 		return;
 	}
 	if (res.ok) {
-		location.replace("/");
+		// Return to the deep link that sent us here, but only within this origin (mirrors the Worker's check).
+		const next = new URLSearchParams(location.search).get("next");
+		const target = next?.startsWith("/") ? new URL(next, location.origin) : null;
+		const safe = target && target.origin === location.origin && !target.pathname.startsWith("/login");
+		location.replace(safe ? target.pathname + target.search + target.hash : "/");
 		return;
 	}
 	const code = await res

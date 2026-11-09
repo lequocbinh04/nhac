@@ -68,6 +68,30 @@ describe("password gate", () => {
 		expect(res.headers.get("Location")).toBe(`${ORIGIN}/login`);
 	});
 
+	it("keeps a deep link through the login redirect", async () => {
+		const res = await get("/track/bbbbbbbbbbbb?t=42");
+		expect(res.status).toBe(302);
+		const location = new URL(res.headers.get("Location") ?? "");
+		expect(location.pathname).toBe("/login");
+		expect(location.searchParams.get("next")).toBe("/track/bbbbbbbbbbbb?t=42");
+	});
+
+	it("sends a signed-in visitor on to a safe next path only", async () => {
+		const cases: [string, string][] = [
+			["/track/bbbbbbbbbbbb?t=42", `${ORIGIN}/track/bbbbbbbbbbbb?t=42`],
+			["//evil.example/x", `${ORIGIN}/`],
+			["/\\evil.example/x", `${ORIGIN}/`],
+			["/\t/evil.example/x", `${ORIGIN}/`],
+			["https://evil.example/", `${ORIGIN}/`],
+			["/login?next=/x", `${ORIGIN}/`],
+		];
+		for (const [next, expected] of cases) {
+			const res = await withSession(`/login?next=${encodeURIComponent(next)}`);
+			expect(res.status, next).toBe(302);
+			expect(res.headers.get("Location"), next).toBe(expected);
+		}
+	});
+
 	it("answers unauthenticated API, stream and cover requests with 401 JSON", async () => {
 		for (const path of ["/api/library", "/stream/song.flac", "/cover/aaaaaaaaaaaa.jpg"]) {
 			const res = await get(path);
