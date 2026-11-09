@@ -1,6 +1,7 @@
 // Loads /api/library once and exposes the catalog. A missing session sends the user to /login.
 import { signal } from "@preact/signals";
 import { buildCatalog, type Catalog } from "./catalog";
+import { loginPath } from "./links";
 import type { LibraryData } from "./types";
 
 export type LibraryState = { status: "loading" } | { status: "error" } | { status: "ready"; catalog: Catalog };
@@ -19,7 +20,7 @@ export async function loadLibrary(): Promise<Catalog | null> {
 	try {
 		const res = await fetch("/api/library", { credentials: "same-origin", cache: "no-cache", headers: { Accept: "application/json" } });
 		if (res.status === 401) {
-			location.replace("/login");
+			location.replace(loginPath(location.pathname, location.search));
 			return null;
 		}
 		if (!res.ok) throw new Error(`library ${res.status}`);

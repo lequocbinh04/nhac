@@ -50,6 +50,82 @@
 	top: calc(var(--top-h) + var(--s-2));
 }
 
+.album-page:has(> .track-cta) {
+	row-gap: var(--s-6);
+}
+
+/* Shared song: one clear action above the album. */
+.track-cta {
+	grid-column: 1 / -1;
+	display: flex;
+	align-items: center;
+	gap: var(--s-4);
+	padding: var(--s-3) var(--s-3) var(--s-3) var(--s-3);
+	border-radius: var(--r-lg);
+	background: var(--raise);
+	min-width: 0;
+}
+
+.track-cta .cover {
+	flex: none;
+	width: 56px;
+	border-radius: var(--r-sm);
+}
+
+.track-cta-text {
+	display: flex;
+	flex-direction: column;
+	flex: 1;
+	min-width: 0;
+}
+
+.track-cta-title {
+	font-size: 17px;
+	font-weight: 600;
+	line-height: 22px;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.track-cta-sub {
+	font-size: 14px;
+	line-height: 20px;
+	color: var(--t2);
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.track-cta-sub .mono {
+	font-size: 12px;
+}
+
+.track-cta-play {
+	flex: none;
+}
+
+@media (max-width: 768px) {
+	/* Stays in reach while the track list scrolls. */
+	.track-cta {
+		position: sticky;
+		top: var(--top-h);
+		z-index: 4;
+		gap: var(--s-3);
+		padding: 10px;
+	}
+	.track-cta .cover {
+		width: 48px;
+	}
+	.track-cta-title {
+		font-size: 16px;
+	}
+	.track-cta-play {
+		height: 44px;
+		padding: 0 var(--s-4);
+	}
+}
+
 .album-cover {
 	border-radius: var(--r-lg);
 }

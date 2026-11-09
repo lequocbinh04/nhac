@@ -741,6 +741,15 @@
 	background: var(--raise);
 }
 
+/* The song a shared link points at, when it isn't already the current track. */
+.trow[data-focus]:not([data-current]) {
+	background: var(--raise);
+}
+
+.trow[data-focus] {
+	scroll-margin: calc(var(--top-h) + 96px) 0 var(--s-5);
+}
+
 .trow-lead {
 	position: relative;
 	display: flex;
@@ -1155,6 +1164,28 @@
 		opacity: 0;
 		transform: translateY(8px);
 	}
+}
+
+.toast[data-detail] {
+	display: flex;
+	flex-direction: column;
+	gap: var(--s-2);
+	max-width: min(560px, calc(100vw - 32px));
+	text-align: left;
+	pointer-events: auto;
+}
+
+.toast-detail {
+	padding: 6px var(--s-2);
+	border-radius: var(--r-xs);
+	background: var(--track);
+	font-size: 12px;
+	line-height: 18px;
+	color: var(--t1);
+	word-break: break-all;
+	-webkit-user-select: all;
+	user-select: all;
+	cursor: text;
 }
 
 .toast[data-leaving] {

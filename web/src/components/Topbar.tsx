@@ -78,7 +78,12 @@ export function SearchField({ autoFocusMobile = false, large = false }: { autoFo
 export function Topbar() {
 	const t = dict.value;
 	const r = nav.value.route;
-	const backTo = r.name === "album" ? { label: t.navAlbums, href: href.albums() } : r.name === "artist" ? { label: t.navArtists, href: href.artists() } : null;
+	const backTo =
+		r.name === "album" || r.name === "track"
+			? { label: t.navAlbums, href: href.albums() }
+			: r.name === "artist"
+				? { label: t.navArtists, href: href.artists() }
+				: null;
 	const mobile = isMobile.value;
 	if (mobile && !backTo) return null;
 	return (

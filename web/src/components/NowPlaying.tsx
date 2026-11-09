@@ -2,17 +2,20 @@
 // follows the finger and dismisses on a flick (velocity > 0.11 px/ms) or a long pull.
 import { useEffect, useRef } from "preact/hooks";
 import type { Track } from "../lib/types";
-import { codecLabel, formatRate, isLossless } from "../lib/format";
+import { codecLabel, formatRate, formatTime, isLossless } from "../lib/format";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
+import { MIN_SHARE_START_S, trackPath } from "../lib/links";
 import { meterBroken, meterSupport, outputRate } from "../lib/meter";
 import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
+import { shareLink, usesNativeShare } from "../lib/share";
 import { nowPlayingOpen } from "../lib/ui";
 import { Cover } from "./Cover";
 import { ArtistLinks, Quality } from "./bits";
 import { Icon } from "./icons";
 import { LevelMeter } from "./Meter";
+import { openMenu } from "./Menu";
 import { Seekbar } from "./Seekbar";
 import { Time, Transport } from "./Transport";
 
@@ -59,12 +62,30 @@ function close() {
 	nowPlayingOpen.value = false;
 }
 
+/** Plain link by default; past the first seconds, offer "from the start" or "from 1:23". */
+function onShare(e: MouseEvent) {
+	const t = dict.value;
+	const tr = player.current.peek();
+	if (!tr) return;
+	const title = `${tr.title} · ${tr.artist}`;
+	const at = player.position();
+	if (at <= MIN_SHARE_START_S) {
+		void shareLink(trackPath(tr.id), title);
+		return;
+	}
+	openMenu(e, usesNativeShare() ? t.share : t.copyLink, [
+		{ label: t.shareFromStart, onSelect: () => void shareLink(trackPath(tr.id), title) },
+		{ label: t.shareFrom(formatTime(at)), onSelect: () => void shareLink(trackPath(tr.id, at), title) },
+	]);
+}
+
 export function NowPlaying() {
 	const t = dict.value;
 	const open = nowPlayingOpen.value;
 	const tr = player.current.value;
 	const c = catalog();
 	const info = tr ? c.album.get(tr.albumId) : undefined;
+	const native = usesNativeShare();
 	const sheet = useRef<HTMLDivElement>(null);
 	const scroller = useRef<HTMLDivElement>(null);
 	const closeBtn = useRef<HTMLButtonElement>(null);
@@ -205,18 +226,23 @@ export function NowPlaying() {
 						<Icon name="caretDown" size={24} />
 					</button>
 					<span class="np-context">{info?.album.title ?? t.nowPlaying}</span>
-					<a
-						href={href.queue()}
-						class="icon-btn"
-						aria-label={t.navQueue}
-						onClick={(e) => {
-							e.preventDefault();
-							close();
-							navigate(href.queue(), { keyboard: e.detail === 0 });
-						}}
-					>
-						<Icon name="queue" size={24} />
-					</a>
+					<span class="np-head-actions">
+						<button type="button" class="icon-btn" aria-label={native ? t.share : t.copyLink} disabled={!tr} onClick={onShare}>
+							<Icon name={native ? "export" : "link"} size={22} />
+						</button>
+						<a
+							href={href.queue()}
+							class="icon-btn"
+							aria-label={t.navQueue}
+							onClick={(e) => {
+								e.preventDefault();
+								close();
+								navigate(href.queue(), { keyboard: e.detail === 0 });
+							}}
+						>
+							<Icon name="queue" size={24} />
+						</a>
+					</span>
 				</header>
 				{tr && (
 					<div class="np-body">

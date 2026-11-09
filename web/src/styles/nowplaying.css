@@ -28,9 +28,14 @@
 	padding: var(--safe-t) var(--s-5) calc(var(--safe-b) + var(--s-6));
 }
 
+.np-head-actions {
+	display: flex;
+	justify-content: flex-end;
+}
+
 .np-head {
 	display: grid;
-	grid-template-columns: 44px minmax(0, 1fr) 44px;
+	grid-template-columns: 88px minmax(0, 1fr) 88px;
 	align-items: center;
 	gap: var(--s-2);
 	height: 60px;

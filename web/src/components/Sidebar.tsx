@@ -11,6 +11,7 @@ export function sectionOf(r: Route): Section | null {
 	switch (r.name) {
 		case "albums":
 		case "album":
+		case "track":
 			return "albums";
 		case "artists":
 		case "artist":

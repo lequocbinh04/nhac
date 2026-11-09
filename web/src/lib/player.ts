@@ -6,6 +6,7 @@ import { signal } from "@preact/signals";
 import { coverUrl, streamUrl } from "./format";
 import { dict } from "./i18n";
 import { enableMeter, resumeMeter } from "./meter";
+import { loginPath } from "./links";
 import { preloadFor, shouldPreloadNext } from "./playback";
 import * as Q from "./queue";
 import { keepAwake, kick } from "./ticker";
@@ -27,6 +28,8 @@ export const volume = signal(1);
 export const muted = signal(false);
 /** Duration of the current track in seconds (element value once known, else library value). */
 export const duration = signal(0);
+/** True once the engine exists and the saved session has been restored. */
+export const ready = signal(false);
 
 export interface Resolver {
 	track: (id: string) => Track | undefined;
@@ -369,7 +372,7 @@ function fail() {
 	// A lapsed session also surfaces as a media error: check, and send the user to sign in.
 	fetch(streamUrl(t.file), { method: "HEAD", credentials: "same-origin" })
 		.then((r) => {
-			if (r.status === 401) location.replace("/login");
+			if (r.status === 401) location.replace(loginPath(location.pathname, location.search));
 		})
 		.catch(() => undefined);
 	if (failures >= MAX_CONSECUTIVE_FAILURES) {
@@ -432,6 +435,11 @@ export function initPlayer(resolver: Resolver) {
 			if (document.visibilityState === "hidden") persist();
 		});
 	}
+	restoreSaved();
+	ready.value = true;
+}
+
+function restoreSaved() {
 	const saved = restore();
 	if (!saved) return;
 	volume.value = Math.min(1, Math.max(0, Number(saved.volume) || 0));
@@ -445,6 +453,20 @@ export function initPlayer(resolver: Resolver) {
 	const id = Q.currentId(q);
 	const t = id ? lib.track(id) : undefined;
 	if (t) load(t, false, id === saved.items[saved.index] ? saved.position : 0);
+}
+
+/**
+ * Make `ids[start]` the current track, paused at `at` seconds, with the rest as the queue.
+ * Nothing is fetched until the user presses play (browsers block autoplay without a gesture).
+ */
+export function cueTracks(ids: string[], start: number, at = 0) {
+	if (!ids.length) return;
+	queue.value = Q.replaceQueue(queue.value, ids, start, queue.value.shuffle);
+	const t = lib.track(Q.currentId(queue.value) ?? "");
+	if (!t) return;
+	if (t.id === current.value?.id) seek(at);
+	else load(t, false, at);
+	persist();
 }
 
 /** Replace the queue and start playing. `shuffle` defaults to the current shuffle mode. */

@@ -4,12 +4,15 @@ import { signal } from "@preact/signals";
 export interface Toast {
 	id: number;
 	text: string;
+	/** Selectable second line (e.g. a link the clipboard refused); the toast then takes pointer input */
+	detail?: string;
 	leaving: boolean;
 }
 
 export const toasts = signal<Toast[]>([]);
 
 const VISIBLE_MS = 3200;
+const DETAIL_MS = 9000;
 const EXIT_MS = 160;
 const MAX = 3;
 let nextId = 1;
@@ -42,9 +45,9 @@ function schedule(id: number, ms: number) {
 	document.addEventListener("visibilitychange", onVis);
 }
 
-export function toast(text: string) {
+export function toast(text: string, opts: { detail?: string } = {}) {
 	const id = nextId++;
 	const list = toasts.value.filter((t) => t.text !== text);
-	toasts.value = [...list, { id, text, leaving: false }].slice(-MAX);
-	schedule(id, VISIBLE_MS);
+	toasts.value = [...list, { id, text, detail: opts.detail, leaving: false }].slice(-MAX);
+	schedule(id, opts.detail ? DETAIL_MS : VISIBLE_MS);
 }

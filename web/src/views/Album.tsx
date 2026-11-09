@@ -1,3 +1,4 @@
+import type { ComponentChildren } from "preact";
 import { Cover } from "../components/Cover";
 import { ArtistLinks, Empty } from "../components/bits";
 import { Icon } from "../components/icons";
@@ -9,6 +10,7 @@ import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
 import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
+import { shareLink, usesNativeShare } from "../lib/share";
 import { toast } from "../lib/toast";
 
 function MoreFrom({ info }: { info: AlbumInfo }) {
@@ -49,7 +51,8 @@ function MoreFrom({ info }: { info: AlbumInfo }) {
 	);
 }
 
-export function AlbumView({ id }: { id: string }) {
+/** `banner` renders above the album (the shared-song call to action); `focusTrackId` marks a row. */
+export function AlbumView({ id, focusTrackId, banner }: { id: string; focusTrackId?: string; banner?: ComponentChildren }) {
 	const t = dict.value;
 	const c = catalog();
 	const info = c.album.get(id);
@@ -62,6 +65,7 @@ export function AlbumView({ id }: { id: string }) {
 
 	return (
 		<div class="page album-page">
+			{banner}
 			<section class="album-side">
 				<Cover albumId={a.id} hasCover={a.cover} size={384} class="album-cover" eager alt={a.title} />
 				<h1 class="album-title" tabIndex={-1}>
@@ -113,6 +117,7 @@ export function AlbumView({ id }: { id: string }) {
 									},
 								},
 								...(info.artists[0] ? [{ label: t.goToArtist, onSelect: () => navigate(href.artist(info.artists[0].key)) }] : []),
+								{ label: usesNativeShare() ? t.share : t.copyLink, onSelect: () => void shareLink(href.album(a.id), `${a.title} · ${a.artist}`) },
 							])
 						}
 					>
@@ -121,7 +126,14 @@ export function AlbumView({ id }: { id: string }) {
 				</div>
 			</section>
 			<section class="album-main">
-				<TrackList tracks={info.tracks} variant="album" albumArtist={a.artist} label={t.songsHeading} onPlay={(i) => player.playTracks(ids, i)} />
+				<TrackList
+					tracks={info.tracks}
+					variant="album"
+					albumArtist={a.artist}
+					label={t.songsHeading}
+					focusId={focusTrackId}
+					onPlay={(i) => player.playTracks(ids, i)}
+				/>
 				<MoreFrom info={info} />
 			</section>
 		</div>

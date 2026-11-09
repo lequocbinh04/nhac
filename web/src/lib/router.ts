@@ -1,10 +1,13 @@
 // Client-side router on the History API. Each history entry gets a key; scroll positions are
 // remembered per key so back/forward lands where the user left off.
 import { signal } from "@preact/signals";
+import { albumPath, trackPath } from "./links";
 
 export type Route =
 	| { name: "albums" }
 	| { name: "album"; id: string }
+	/** Shareable song link; `t` is the raw `?t=` value (parsed against the track's duration) */
+	| { name: "track"; id: string; t: string | null }
 	| { name: "artists" }
 	| { name: "artist"; key: string }
 	| { name: "songs" }
@@ -36,6 +39,7 @@ export function parseRoute(pathname: string, search: string): Route {
 	if (parts.length === 0) return { name: "albums" };
 	if (a === "albums" && parts.length === 1) return { name: "albums" };
 	if (a === "albums" && b && parts.length === 2) return { name: "album", id: b };
+	if (a === "track" && b && parts.length === 2) return { name: "track", id: b, t: new URLSearchParams(search).get("t") };
 	if (a === "artists" && parts.length === 1) return { name: "artists" };
 	if (a === "artists" && b && parts.length === 2) return { name: "artist", key: b };
 	if (a === "songs" && parts.length === 1) return { name: "songs" };
@@ -47,7 +51,8 @@ export function parseRoute(pathname: string, search: string): Route {
 
 export const href = {
 	albums: () => "/",
-	album: (id: string) => `/albums/${encodeURIComponent(id)}`,
+	album: albumPath,
+	track: (id: string) => trackPath(id),
 	artists: () => "/artists",
 	artist: (key: string) => `/artists/${encodeURIComponent(key)}`,
 	songs: () => "/songs",

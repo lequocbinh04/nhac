@@ -20,6 +20,7 @@ import { QueueView } from "./views/Queue";
 import { SearchView } from "./views/Search";
 import { SettingsView } from "./views/Settings";
 import { SongsView } from "./views/Songs";
+import { TrackView } from "./views/Track";
 
 function View({ route }: { route: Route }) {
 	const t = dict.value;
@@ -28,6 +29,8 @@ function View({ route }: { route: Route }) {
 			return <AlbumsView />;
 		case "album":
 			return <AlbumView id={route.id} />;
+		case "track":
+			return <TrackView id={route.id} t={route.t} />;
 		case "artists":
 			return <ArtistsView />;
 		case "artist":

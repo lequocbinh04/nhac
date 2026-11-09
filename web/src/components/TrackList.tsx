@@ -7,6 +7,7 @@ import { catalog } from "../lib/library";
 import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
 import type { Span } from "../lib/search";
+import { shareLink, usesNativeShare } from "../lib/share";
 import { toast } from "../lib/toast";
 import type { Track } from "../lib/types";
 import { useVirtual } from "../lib/virtual";
@@ -39,6 +40,7 @@ export function trackMenuItems(c: Catalog, t: Track): MenuItem[] {
 	if (info) items.push({ label: d.goToAlbum, onSelect: () => navigate(href.album(info.album.id)) });
 	const first = info?.artists[0];
 	if (first) items.push({ label: d.goToArtist, onSelect: () => navigate(href.artist(first.key)) });
+	items.push({ label: usesNativeShare() ? d.share : d.copyLink, onSelect: () => void shareLink(href.track(t.id), `${t.title} · ${t.artist}`) });
 	return items;
 }
 
@@ -52,6 +54,8 @@ interface Props {
 	/** Highlight spans per track id: [title, artist, album] */
 	spans?: Map<string, Span[][]>;
 	label: string;
+	/** Track to mark (opened from a shared link) */
+	focusId?: string;
 }
 
 const ROW_H = { album: 52, list: 60 };
@@ -84,7 +88,7 @@ function VirtualTracks(props: Props) {
 	);
 }
 
-function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSize }: Props & { track: Track; index: number; top?: number; setSize?: number }) {
+function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSize, focusId }: Props & { track: Track; index: number; top?: number; setSize?: number }) {
 	const d = dict.value;
 	const c = catalog();
 	const isCurrent = player.current.value?.id === t.id;
@@ -97,6 +101,8 @@ function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSiz
 		<li
 			class="trow"
 			data-current={isCurrent ? "" : undefined}
+			data-focus={focusId === t.id ? "" : undefined}
+			data-track={t.id}
 			style={top !== undefined ? { transform: `translateY(${top}px)` } : undefined}
 			aria-posinset={setSize ? index + 1 : undefined}
 			aria-setsize={setSize}
