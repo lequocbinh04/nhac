@@ -274,6 +274,44 @@ describe("lyrics", () => {
 	});
 });
 
+describe("spectrum", () => {
+	const WEBP = new Uint8Array([0x52, 0x49, 0x46, 0x46, 4, 0, 0, 0, 0x57, 0x45, 0x42, 0x50]);
+	const PNG = new Uint8Array([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a, 1, 2, 3]);
+	beforeAll(async () => {
+		await env.MUSIC.put("_nhac/spectra/bbbbbbbbbbbb.webp", WEBP);
+		await env.MUSIC.put("_nhac/spectra/dddddddddddd.png", PNG);
+	});
+
+	it("serves a track's spectrogram as WebP with a long private cache", async () => {
+		const res = await withSession("/spectrum/bbbbbbbbbbbb");
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Content-Type")).toBe("image/webp");
+		expect(res.headers.get("Cache-Control")).toBe("private, max-age=2592000");
+		expect(new Uint8Array(await res.arrayBuffer())).toEqual(WEBP);
+	});
+
+	it("falls back to the PNG an indexer without libwebp writes", async () => {
+		const res = await withSession("/spectrum/dddddddddddd");
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Content-Type")).toBe("image/png");
+		expect(new Uint8Array(await res.arrayBuffer())).toEqual(PNG);
+	});
+
+	it("404s for missing spectrograms and malformed ids", async () => {
+		for (const path of ["/spectrum/cccccccccccc", "/spectrum/bbbbbbbbbbbb.webp", "/spectrum/BBBBBBBBBBBB", "/spectrum/..%2Flibrary", "/spectrum/"]) {
+			const res = await withSession(path);
+			expect(res.status, path).toBe(404);
+			await res.body?.cancel();
+		}
+	});
+
+	it("answers an unauthenticated request with 401 JSON", async () => {
+		const res = await get("/spectrum/bbbbbbbbbbbb");
+		expect(res.status).toBe(401);
+		expect(await res.json()).toEqual({ error: "unauthorized" });
+	});
+});
+
 describe("S3 mode", () => {
 	const s3Env = { ...env, STORAGE: "s3", S3_ENDPOINT: "https://s3.example.com/", S3_BUCKET: "music", S3_REGION: "auto", S3_ACCESS_KEY_ID: "AKID", S3_SECRET_ACCESS_KEY: "secret" } as Env;
 	const upstream: Request[] = [];

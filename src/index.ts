@@ -111,7 +111,7 @@ export default {
 		}
 
 		if (!(await validSession(env, request))) {
-			if (path.startsWith("/api/") || path.startsWith("/stream/") || path.startsWith("/cover/") || path.startsWith("/lyrics/")) {
+			if (["/api/", "/stream/", "/cover/", "/lyrics/", "/spectrum/"].some((prefix) => path.startsWith(prefix))) {
 				return json({ error: "unauthorized" }, 401);
 			}
 			const login = new URL("/login", url);
@@ -134,6 +134,15 @@ export default {
 			const id = path.slice("/lyrics/".length);
 			if (!/^[0-9a-f]{12}$/.test(id)) return new Response("Not found", { status: 404 });
 			return serveObject(request, env, `${env.LIBRARY_PREFIX}lyrics/${id}.lrc`, "private, no-cache");
+		}
+		if (path.startsWith("/spectrum/") && isRead) {
+			const id = path.slice("/spectrum/".length);
+			if (!/^[0-9a-f]{12}$/.test(id)) return new Response("Not found", { status: 404 });
+			// The indexer writes WebP when its ffmpeg has libwebp and PNG otherwise.
+			const base = `${env.LIBRARY_PREFIX}spectra/${id}`;
+			const webp = await serveObject(request, env, `${base}.webp`, "private, max-age=2592000");
+			if (webp.status !== 404) return webp;
+			return serveObject(request, env, `${base}.png`, "private, max-age=2592000");
 		}
 		if (path.startsWith("/stream/") && isRead) {
 			const key = trackKey(path, env.LIBRARY_PREFIX);

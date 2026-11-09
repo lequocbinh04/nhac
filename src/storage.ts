@@ -11,6 +11,8 @@ const CONTENT_TYPES: Record<string, string> = {
 	opus: "audio/ogg",
 	json: "application/json; charset=utf-8",
 	jpg: "image/jpeg",
+	png: "image/png",
+	webp: "image/webp",
 	lrc: "text/plain; charset=utf-8",
 };
 
