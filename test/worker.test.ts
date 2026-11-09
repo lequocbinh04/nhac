@@ -239,6 +239,21 @@ describe("covers", () => {
 	});
 });
 
+describe("static assets", () => {
+	it("404s a missing hashed asset instead of serving the SPA page", async () => {
+		const spa = { fetch: async () => new Response("<!doctype html>", { headers: { "Content-Type": "text/html; charset=utf-8" } }) };
+		const res = await get("/assets/app-OLDHASH.css", {}, { ...env, ASSETS: spa } as unknown as Env);
+		expect(res.status).toBe(404);
+	});
+
+	it("passes real assets through untouched", async () => {
+		const css = { fetch: async () => new Response("body{}", { headers: { "Content-Type": "text/css" } }) };
+		const res = await get("/assets/app-NEW.css", {}, { ...env, ASSETS: css } as unknown as Env);
+		expect(res.status).toBe(200);
+		expect(await res.text()).toBe("body{}");
+	});
+});
+
 describe("lyrics", () => {
 	const LRC = "[00:01.00]Dòng một\n[00:04.50]Dòng hai\n";
 	beforeAll(async () => {

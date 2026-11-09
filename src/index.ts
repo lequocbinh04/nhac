@@ -101,7 +101,13 @@ export default {
 				return Response.redirect(new URL(safeNext(url.searchParams.get("next"), url), url).toString(), 302);
 			}
 			// The assets layer serves login.html at /login itself (and redirects /login.html -> /login).
-			return env.ASSETS.fetch(request);
+			const res = await env.ASSETS.fetch(request);
+			// A hashed asset from a previous deploy would otherwise get the SPA's index.html (200, text/html),
+			// which the browser then tries to use as CSS/JS. Make it a clean 404 instead.
+			if (path.startsWith(PUBLIC_PREFIX) && res.headers.get("Content-Type")?.startsWith("text/html")) {
+				return new Response("Not found", { status: 404 });
+			}
+			return res;
 		}
 
 		if (!(await validSession(env, request))) {
