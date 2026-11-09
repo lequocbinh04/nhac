@@ -70,11 +70,10 @@ async function handleLogin(request: Request, env: Env): Promise<Response> {
 
 // "/stream/Artist/Album/01%20Song.flac" -> "Artist/Album/01 Song.flac"; null for anything unsafe.
 function trackKey(path: string, libraryPrefix: string): string | null {
-	const segments = path.slice("/stream/".length).split("/");
 	try {
-		const decoded = segments.map((s) => decodeURIComponent(s));
-		if (decoded.some((s) => s === "" || s === "." || s === "..")) return null;
-		const key = decoded.join("/");
+		// Validate after decoding: an encoded "%2F..%2F" must not smuggle a traversal segment.
+		const key = path.slice("/stream/".length).split("/").map((s) => decodeURIComponent(s)).join("/");
+		if (key.split("/").some((s) => s === "" || s === "." || s === "..")) return null;
 		return key.startsWith(libraryPrefix) ? null : key;
 	} catch {
 		return null;

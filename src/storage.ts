@@ -30,9 +30,10 @@ async function fromR2(request: Request, env: Env, key: string, cacheControl: str
 	if (type) headers.set("Content-Type", type);
 	if (!("body" in object)) return new Response(null, { status: 304, headers });
 	if (request.headers.has("Range") && object.range) {
-		const r = object.range;
-		const start = "suffix" in r ? object.size - r.suffix : (r.offset ?? 0);
-		const end = "suffix" in r ? object.size - 1 : Math.min(start + (r.length ?? object.size - start) - 1, object.size - 1);
+		// R2 reports {offset, length} with suffix present but undefined, so test values, not keys.
+		const r: { offset?: number; length?: number; suffix?: number } = object.range;
+		const start = r.suffix !== undefined ? object.size - r.suffix : (r.offset ?? 0);
+		const end = r.suffix !== undefined ? object.size - 1 : Math.min(start + (r.length ?? object.size - start) - 1, object.size - 1);
 		headers.set("Content-Range", `bytes ${start}-${end}/${object.size}`);
 		headers.set("Content-Length", String(end - start + 1));
 		return new Response(object.body, { status: 206, headers });
