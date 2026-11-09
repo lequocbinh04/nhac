@@ -1,0 +1,349 @@
+/* Now Playing sheet: slides up with the drawer curve, exits faster than it enters. */
+
+.np {
+	position: fixed;
+	inset: 0;
+	z-index: 50;
+	background: var(--bg);
+	transform: translateY(100%);
+	visibility: hidden;
+	will-change: transform;
+	transition:
+		transform 280ms var(--ease-drawer),
+		visibility 0s linear 280ms;
+}
+
+.np[data-open] {
+	transform: none;
+	visibility: visible;
+	transition:
+		transform var(--d-sheet) var(--ease-drawer),
+		visibility 0s;
+}
+
+.np-scroll {
+	height: 100%;
+	overflow-y: auto;
+	overscroll-behavior: contain;
+	padding: var(--safe-t) var(--s-5) calc(var(--safe-b) + var(--s-6));
+}
+
+.np-head {
+	display: grid;
+	grid-template-columns: 44px minmax(0, 1fr) 44px;
+	align-items: center;
+	gap: var(--s-2);
+	height: 60px;
+	margin: 0 calc(-1 * var(--s-2));
+	cursor: grab;
+	touch-action: none;
+}
+
+.np-context {
+	font-size: 15px;
+	color: var(--t2);
+	text-align: center;
+	white-space: nowrap;
+	overflow: hidden;
+	text-overflow: ellipsis;
+}
+
+.np-body {
+	display: flex;
+	flex-direction: column;
+	align-items: stretch;
+	max-width: 520px;
+	margin: 0 auto;
+}
+
+.np-art {
+	width: min(100%, 44dvh);
+	margin: var(--s-2) auto 0;
+}
+
+.np-art .cover {
+	border-radius: var(--r-lg);
+}
+
+.np-titles {
+	display: flex;
+	flex-direction: column;
+	align-items: flex-start;
+	margin-top: var(--s-5);
+	min-width: 0;
+}
+
+.np-title {
+	font-size: 24px;
+	line-height: 30px;
+	font-weight: 600;
+	letter-spacing: -0.015em;
+	display: -webkit-box;
+	-webkit-box-orient: vertical;
+	-webkit-line-clamp: 2;
+	line-clamp: 2;
+	overflow: hidden;
+	overflow-wrap: anywhere;
+}
+
+.np-artist {
+	margin-top: 2px;
+	font-size: 17px;
+	line-height: 24px;
+	color: var(--t2);
+}
+
+.np-titles .quality {
+	margin-top: var(--s-3);
+}
+
+.np-seek {
+	margin-top: var(--s-5);
+}
+
+.np-times {
+	display: flex;
+	justify-content: space-between;
+	margin-top: var(--s-2);
+	font-size: 12px;
+	color: var(--t2);
+}
+
+.np-times .time:last-child {
+	color: var(--t3);
+}
+
+.transport-lg {
+	justify-content: space-between;
+	margin: var(--s-4) calc(-1 * var(--s-2)) 0;
+}
+
+.transport-lg .icon-btn {
+	width: 52px;
+	height: 52px;
+}
+
+.np-panel {
+	margin-top: var(--s-6);
+	padding: var(--s-5);
+	border-radius: var(--r-lg);
+	background: var(--panel);
+}
+
+.panel-head {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: var(--s-3);
+	margin-bottom: var(--s-4);
+}
+
+.panel-title {
+	font-size: 16px;
+	font-weight: 600;
+}
+
+.panel-note {
+	font-size: 12px;
+	color: var(--t3);
+}
+
+/* ---------------------------------------------------------------- level meter */
+
+.meter {
+	padding-bottom: var(--s-5);
+	margin-bottom: var(--s-5);
+	border-bottom: 1px solid var(--line);
+}
+
+.meter-row {
+	display: grid;
+	grid-template-columns: 16px minmax(0, 1fr);
+	align-items: center;
+	gap: var(--s-3);
+	height: 20px;
+}
+
+.meter-ch {
+	font-size: 12px;
+	color: var(--t3);
+}
+
+.meter-track {
+	position: relative;
+	height: 8px;
+	border-radius: 4px;
+	background: var(--track);
+	overflow: hidden;
+}
+
+.meter-fill {
+	position: absolute;
+	inset: 0;
+	border-radius: 4px;
+	background: var(--acc);
+	transform-origin: 0 50%;
+	transform: scaleX(0);
+}
+
+.meter-hold {
+	position: absolute;
+	top: 0;
+	bottom: 0;
+	left: -1px;
+	width: 2px;
+	border-radius: 1px;
+	background: var(--t1);
+	opacity: 0;
+}
+
+.meter-scale {
+	position: relative;
+	height: 22px;
+	margin-left: calc(16px + var(--s-3));
+	font-size: 11px;
+	color: var(--t3);
+}
+
+.meter-scale span {
+	position: absolute;
+	top: 50%;
+	transform: translate(-50%, -50%);
+}
+
+.meter-scale span[data-edge="start"] {
+	transform: translate(0, -50%);
+}
+
+.meter-scale span[data-edge="end"] {
+	transform: translate(-100%, -50%);
+}
+
+/* ---------------------------------------------------------------- signal path */
+
+.sigpath-row {
+	display: flex;
+	justify-content: space-between;
+	gap: var(--s-3);
+}
+
+.sigpath-cell {
+	display: flex;
+	align-items: flex-start;
+	gap: var(--s-3);
+	min-width: 0;
+}
+
+.sigpath-arrow {
+	flex: none;
+	margin-top: 24px;
+	color: var(--t3);
+}
+
+.sigpath-text {
+	display: flex;
+	flex-direction: column;
+	min-width: 0;
+}
+
+.sigpath-label {
+	font-size: 13px;
+	line-height: 18px;
+	color: var(--t3);
+}
+
+.sigpath-value {
+	margin-top: 4px;
+	font-size: 15px;
+	line-height: 20px;
+	color: var(--t1);
+	white-space: nowrap;
+}
+
+.sigpath-detail {
+	display: flex;
+	align-items: center;
+	gap: 4px;
+	margin-top: 2px;
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--t2);
+	white-space: nowrap;
+}
+
+/* Phones: one step per row, the order reads as the path. */
+@media (max-width: 480px) {
+	.sigpath-row {
+		flex-direction: column;
+		gap: 10px;
+	}
+	.sigpath-arrow {
+		display: none;
+	}
+	.sigpath-text {
+		flex-direction: row;
+		align-items: baseline;
+		flex-wrap: wrap;
+		column-gap: var(--s-2);
+	}
+	.sigpath-label {
+		flex: none;
+		width: 76px;
+	}
+	.sigpath-value,
+	.sigpath-detail {
+		margin-top: 0;
+	}
+	.sigpath-detail {
+		align-self: center;
+	}
+}
+
+.sigpath-ok {
+	color: var(--acc);
+}
+
+.sigpath-note {
+	margin-top: var(--s-4);
+	font-size: 13px;
+	line-height: 1.55;
+	color: var(--t3);
+}
+
+
+/* ---------------------------------------------------------------- desktop: two columns */
+
+@media (min-width: 769px) {
+	.np-scroll {
+		padding: 0 var(--page-x) var(--s-7);
+	}
+	.np-head {
+		max-width: 1160px;
+		margin: 0 auto;
+		height: var(--top-h);
+		cursor: default;
+	}
+	.np-body {
+		display: grid;
+		grid-template-columns: minmax(0, 1fr) minmax(360px, 460px);
+		gap: 64px;
+		align-items: center;
+		max-width: 1160px;
+		min-height: calc(100dvh - var(--top-h) - var(--s-7));
+	}
+	.np-art {
+		width: min(100%, calc(100dvh - 180px), 600px);
+		margin: 0;
+		justify-self: end;
+	}
+	.np-side {
+		min-width: 0;
+	}
+	.np-titles {
+		margin-top: 0;
+	}
+	.np-title {
+		font-size: 30px;
+		line-height: 36px;
+	}
+}
