@@ -15,14 +15,30 @@ cached in <out>/peaks-cache.json keyed by file, size and mtime, so re-runs only 
 (the Worker never reads that cache; uploading it is harmless but unnecessary). Files ffmpeg cannot
 decode get no `peaks` field.
 
+Lyrics: embedded tags (any key containing "lyric", e.g. LYRICS, UNSYNCEDLYRICS, or MP4 ©lyr; not
+LYRICIST) and a sidecar <same basename>.lrc next to the audio file. Text counts as "synced" when at least
+two lines start with [mm:ss] / [mm:ss.xx] timestamps, otherwise "plain". Synced beats plain; on a tie the
+sidecar wins, because it is the copy a user edits. The chosen text (BOM stripped, LF line endings,
+otherwise as found) goes to <out>/lyrics/<trackId>.lrc and the track gets "lyrics": "synced" | "plain".
+Files are rewritten only when their content changes, and stale ones are removed.
+
 Requires ffmpeg and ffprobe on PATH. Python 3.9+, standard library only.
 """
-import argparse, array, base64, collections, hashlib, json, math, os, subprocess, sys, unicodedata
+import argparse, array, base64, collections, hashlib, json, math, os, re, subprocess, sys, unicodedata
 from concurrent.futures import ThreadPoolExecutor
 
 AUDIO_EXTENSIONS = (".flac", ".m4a", ".mp3", ".wav", ".aiff", ".aif", ".ogg", ".opus")
 PEAK_BINS = 96
 PEAKS_CACHE_VERSION = 1
+LRC_LINE = re.compile(r"^(?:\[\d{1,3}:[0-5]\d(?:[.:]\d{1,3})?\])+")
+LRC_TAG = re.compile(r"\[[^\]]*\]|<\d{1,3}:\d\d(?:[.:]\d{1,3})?>")
+# Whole-text placeholders some taggers write instead of lyrics; matched against fold() of the only line.
+PLACEHOLDER = re.compile(
+    r"(no lyrics?( (are |is )?(available|found|yet))?"
+    r"|lyrics? (not (available|found)|unavailable|coming soon)"
+    r"|(this (song|track) is )?(an )?instrumental( (track|music|version|song))?"
+    r"|(khong|chua) co loi( bai hat)?|nhac khong loi|bai hat khong co loi"
+    r"|纯音乐(, ?请欣赏)?)")
 
 
 def fold(s):
@@ -42,6 +58,48 @@ def number(value):
         return 0
 
 
+def normalize_lyrics(text):
+    """BOM stripped, LF line endings, surrounding blank lines dropped; None when there is no text or the
+    only line left after removing LRC timestamps and [ar:]/[ti:] style tags is a placeholder such as
+    "No lyrics available", "Instrumental" or "Không có lời"."""
+    text = text.lstrip("\ufeff").replace("\r\n", "\n").replace("\r", "\n").strip("\n")
+    lines = [s for s in (LRC_TAG.sub("", line).strip() for line in text.split("\n")) if s]
+    if not lines:
+        return None
+    if len(lines) == 1 and PLACEHOLDER.fullmatch(re.sub(r"[\s.!…\-–—_*()]+", " ", fold(lines[0])).strip().replace("，", ",")):
+        return None
+    return text + "\n"
+
+
+def lyrics_kind(text):
+    return "synced" if sum(1 for line in text.split("\n") if LRC_LINE.match(line.strip())) >= 2 else "plain"
+
+
+def read_sidecar(path):
+    for ext in (".lrc", ".LRC"):
+        try:
+            with open(path + ext, "rb") as f:
+                raw = f.read()
+        except OSError:
+            continue
+        if raw.startswith((b"\xff\xfe", b"\xfe\xff")):
+            return raw.decode("utf-16", errors="replace")
+        try:
+            return raw.decode("utf-8-sig")
+        except UnicodeDecodeError:
+            return raw.decode("cp1252", errors="replace")
+    return None
+
+
+def pick_lyrics(embedded, sidecar):
+    """(text, kind) or (None, None). Order candidates sidecar-first so it wins ties; synced beats plain."""
+    candidates = [t for t in (normalize_lyrics(x) for x in [sidecar or "", *embedded]) if t]
+    if not candidates:
+        return None, None
+    text = next((t for t in candidates if lyrics_kind(t) == "synced"), candidates[0])
+    return text, lyrics_kind(text)
+
+
 def probe(root, key):
     out = subprocess.run(
         ["ffprobe", "-v", "error", "-show_entries",
@@ -52,14 +110,18 @@ def probe(root, key):
         info = json.loads(out or "{}")
     except json.JSONDecodeError:
         return None
-    tags, audio, has_cover = {}, None, False
+    tags, lyrics, audio, has_cover = {}, [], None, False
+    for source in [*(s.get("tags") or {} for s in info.get("streams", [])), info.get("format", {}).get("tags") or {}]:
+        for k, v in source.items():
+            k = k.lower()
+            tags[k] = v
+            if ("lyric" in k or k.endswith("lyr")) and "lyricist" not in k and isinstance(v, str):
+                lyrics.append(v)
     for stream in info.get("streams", []):
-        tags.update({k.lower(): v for k, v in (stream.get("tags") or {}).items()})
         if stream.get("codec_type") == "audio" and audio is None:
             audio = stream
         elif stream.get("codec_type") == "video":
             has_cover = True
-    tags.update({k.lower(): v for k, v in (info.get("format", {}).get("tags") or {}).items()})
     if audio is None:
         return None
     bits = str(audio.get("bits_per_raw_sample") or audio.get("bits_per_sample") or "0")
@@ -82,6 +144,7 @@ def probe(root, key):
         "sr": int(audio.get("sample_rate") or 0),
         "bits": int(bits) if bits.isdigit() else 0,
         "_cover": has_cover,
+        "_lyrics": pick_lyrics(lyrics, read_sidecar(os.path.splitext(os.path.join(root, key))[0])),
     }
 
 
@@ -149,6 +212,29 @@ def index_file(root, key, cache, fresh):
     return track
 
 
+def write_lyrics(lyrics_dir, tracks):
+    """Sync <out>/lyrics with the tracks' chosen lyrics; returns (written, removed) file counts."""
+    os.makedirs(lyrics_dir, exist_ok=True)
+    wanted = {f"{t['id']}.lrc": t["_lyrics"][0] for t in tracks if t["_lyrics"][0]}
+    written = removed = 0
+    for name, text in wanted.items():
+        path, data = os.path.join(lyrics_dir, name), text.encode("utf-8")
+        try:
+            with open(path, "rb") as f:
+                if f.read() == data:
+                    continue
+        except OSError:
+            pass
+        with open(path, "wb") as f:
+            f.write(data)
+        written += 1
+    for name in os.listdir(lyrics_dir):
+        if name.endswith(".lrc") and name not in wanted:
+            os.remove(os.path.join(lyrics_dir, name))
+            removed += 1
+    return written, removed
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("music_dir", help="local folder that mirrors the bucket's music files")
@@ -203,18 +289,23 @@ def main():
         with_cover = {album_id for (album_id, _), ok in zip(cover_jobs, results) if ok}
     for album in albums:
         album["cover"] = album["id"] in with_cover
+    lyrics_written, lyrics_removed = write_lyrics(os.path.join(args.out, "lyrics"), tracks)
     for t in tracks:
-        peaks = t["_peaks"]
-        for k in ("_cover", "albumTitle", "albumArtist", "_peaks", "_peaksKey"):
+        peaks, lyrics = t["_peaks"], t["_lyrics"][1]
+        for k in ("_cover", "albumTitle", "albumArtist", "_peaks", "_peaksKey", "_lyrics"):
             del t[k]
         if peaks is not None:
             t["peaks"] = peaks
+        if lyrics:
+            t["lyrics"] = lyrics
+    with_lyrics = sum(1 for t in tracks if "lyrics" in t)
+    synced = sum(1 for t in tracks if t.get("lyrics") == "synced")
 
     albums.sort(key=lambda a: (fold(a["artist"]), fold(a["title"])))
     library = {
         "version": hashlib.sha1("\n".join(t["file"] for t in tracks).encode()).hexdigest()[:10],
         "stats": {"tracks": len(tracks), "albums": len(albums), "bytes": sum(t["size"] for t in tracks),
-                  "seconds": round(sum(t["dur"] for t in tracks))},
+                  "seconds": round(sum(t["dur"] for t in tracks)), "lyrics": with_lyrics},
         "albums": albums,
         "tracks": tracks,
     }
@@ -222,7 +313,9 @@ def main():
         json.dump(library, f, ensure_ascii=False, separators=(",", ":"))
     with_peaks = sum(1 for t in tracks if "peaks" in t)
     print(f"{len(tracks)} tracks, {len(albums)} albums, {len(with_cover)} covers, "
-          f"{with_peaks} waveforms ({len(fresh)} decoded, {with_peaks - len(fresh)} cached) -> {os.path.abspath(args.out)}")
+          f"{with_peaks} waveforms ({len(fresh)} decoded, {with_peaks - len(fresh)} cached), "
+          f"{with_lyrics} lyrics ({synced} synced; {lyrics_written} written, {lyrics_removed} removed) "
+          f"-> {os.path.abspath(args.out)}")
 
 
 if __name__ == "__main__":

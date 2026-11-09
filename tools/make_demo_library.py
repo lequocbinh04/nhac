@@ -9,6 +9,10 @@ Writes <out>/<Album artist>/<Album>/<NN - Title>.flac with full tags (title, art
 album_artist, track, disc, date, genre) and the cover embedded, in a realistic spread of formats:
 16-bit/44.1 kHz, 24/48, 24/96 and one 24/192 album. Output is deterministic for a given script version.
 
+Eight tracks carry original lyrics written for this demo (see LYRICS): six embedded synced LRC whose
+timestamps are spread over each track's real duration, one embedded plain text, and one sidecar .lrc
+next to the audio file.
+
 Requires ffmpeg on PATH. Python 3.9+, standard library only.
 """
 import argparse, os, random, shutil, subprocess, sys, time
@@ -65,6 +69,70 @@ ALBUMS = [
      "features": {3: "Hạ Vy Ensemble"}},
 ]
 
+# (album slug, track index) -> (how it is stored, lines). Synced lines are spread evenly between the end of
+# the intro and the start of the outro; an empty string marks a stanza break in plain lyrics.
+LYRICS = {
+    ("mua-ha-trong-veo", 0): ("synced", [
+        "Nắng đầu ngõ rơi trên vai áo mỏng",
+        "Gió mang mùi cỏ khô qua hiên nhà",
+        "Em đứng đợi, đếm từng vệt sáng",
+        "Mùa hạ đến nhẹ như chưa từng xa",
+    ]),
+    ("mua-ha-trong-veo", 3): ("synced", [
+        "Ba giờ chiều, mặt nước lặng như gương",
+        "Light keeps folding in the water",
+        "Mình thả trôi, không cần nói gì thêm",
+        "Summer, stay a little longer",
+    ]),
+    ("glass-harbor", 1): ("synced", [
+        "Six-forty and the ferry hums",
+        "Coffee steam against the glass",
+        "Every gull knows where it's going",
+        "I just watch the harbor pass",
+    ]),
+    ("dem-sai-gon", 1): ("synced", [
+        "Quán khuya còn một ngọn đèn vàng",
+        "Ly cà phê nguội, phố vẫn chưa tan",
+        "Tiếng xe xa dần qua con hẻm nhỏ",
+        "Mình ngồi đây, để đêm trôi chậm lại",
+    ]),
+    ("northern-lines", 2): ("synced", [
+        "Put the kettle on, the snow is falling slow",
+        "Two cups waiting by the window",
+        "Nothing on the road for miles",
+        "Only steam and quiet smiles",
+    ]),
+    ("static-bloom", 3): ("synced", [
+        "Night bus humming in a minor key",
+        "Đèn đường lướt qua như những nốt nhạc",
+        "Every stop a different melody",
+        "Về nhà thôi, thành phố đã ngủ say",
+    ]),
+    ("mua-vang-tren-pho", 0): ("plain", [
+        "Mưa vàng trên phố, lá rơi chậm thôi",
+        "Ai đi ngang qua, áo còn ướt vai",
+        "",
+        "Một chiếc ô xanh, một chiếc ô vàng",
+        "Mình chung lối về, mưa cũng dịu dàng",
+    ]),
+    ("hoi-tho-cua-gio", 1): ("sidecar", [
+        "Thả con diều giấy lên trời xanh",
+        "Sợi dây mỏng, gió kéo thật nhanh",
+        "Đồi cỏ lau nghiêng theo tiếng cười",
+        "Chiều nay mình bay cùng mây trời",
+    ]),
+}
+
+
+def lyrics_text(kind, lines, dur):
+    """LRC with lines spread over the sung part of the track, or plain text for kind == "plain"."""
+    if kind == "plain":
+        return "\n".join(lines) + "\n"
+    start, end = dur * 0.15, dur * 0.82
+    step = (end - start) / len(lines)
+    stamps = (start + i * step for i in range(len(lines)))
+    return "".join(f"[{int(t // 60):02d}:{t % 60:05.2f}]{line}\n" for t, line in zip(stamps, lines))
+
 
 def hz(midi):
     return 440.0 * 2 ** ((midi - 69) / 12)
@@ -119,7 +187,7 @@ def channel_expr(rng, album, dur, detune, pan):
 
 
 def render(job):
-    album, idx, title, path, dur, cover, disc, n = job
+    album, idx, title, path, dur, cover, disc, n, lyrics = job
     rng = random.Random(f"{album['slug']}/{idx}")
     # Both channels share one seed, so chords and arpeggio match; only detune and arpeggio panning differ.
     seed = rng.random()
@@ -142,7 +210,15 @@ def render(job):
         cmd += ["-bits_per_raw_sample", "24"]
     for k, v in tags.items():
         cmd += ["-metadata", f"{k}={v}"]
+    if lyrics and lyrics[0] != "sidecar":
+        cmd += ["-metadata", f"LYRICS={lyrics_text(lyrics[0], lyrics[1], dur)}"]
     os.makedirs(os.path.dirname(path), exist_ok=True)
+    sidecar = os.path.splitext(path)[0] + ".lrc"
+    if lyrics and lyrics[0] == "sidecar":
+        with open(sidecar, "w", encoding="utf-8", newline="\n") as f:
+            f.write(lyrics_text("synced", lyrics[1], dur))
+    elif os.path.exists(sidecar):
+        os.remove(sidecar)
     result = subprocess.run(cmd + [path], capture_output=True, text=True)
     if result.returncode != 0:
         raise RuntimeError(f"ffmpeg failed for {path}:\n{result.stderr[-2000:]}")
@@ -176,7 +252,8 @@ def main():
                 n -= discs[disc - 1]
                 disc += 1
             name = f"{disc}-{n:02d} - {safe(title)}.flac" if len(discs) > 1 else f"{n:02d} - {safe(title)}.flac"
-            jobs.append((album, idx, title, os.path.join(folder, name), dur, cover, disc, n))
+            jobs.append((album, idx, title, os.path.join(folder, name), dur, cover, disc, n,
+                         LYRICS.get((album["slug"], idx))))
 
     started = time.time()
     with ThreadPoolExecutor(args.jobs) as pool:
