@@ -102,6 +102,10 @@ The bucket holds your music as-is, plus a small index under a prefix (`_nhac/` b
 
    Re-run both commands whenever you add music; waveforms and spectrograms are cached, so re-indexing is quick.
 
+   **Album covers.** Embedded artwork comes first. An album without it takes a `.jpg`/`.png` from its own folder or from a `Cover`, `Covers`, `Artwork`, `Artworks` or `Scans` subfolder: names containing front, cover, folder or album win, otherwise the largest roughly square image. A folder shared by several albums is never used.
+
+   **Indexing in batches.** `--keep-missing` keeps every track of the previous `library-data/library.json` whose file is no longer in the music folder, together with its waveform, lyrics, spectrogram and cover. Add music a batch at a time, index, upload, then delete the local copies; new tracks still join albums that are already indexed. Without the flag, tracks whose files are gone leave the index.
+
 4. **Set your password and deploy**
 
    ```sh

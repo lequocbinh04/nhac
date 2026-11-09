@@ -5,6 +5,15 @@ Reads tags and stream info with ffprobe, groups tracks into albums and extracts 
 Writes <out>/library.json and <out>/covers/<albumId>.jpg. Upload <out> to <bucket>/<LIBRARY_PREFIX>
 and the music folder itself to the bucket root, keeping the same relative paths.
 
+Folder art: an album whose tracks carry no embedded picture takes a .jpg/.png from a folder that holds
+only that album's tracks, or from its Cover/Covers/Artwork/Artworks/Scans subfolder. Names containing
+front, cover, folder or album win (in that order; back/inside/inlay/tray/cd/disc names never do),
+otherwise the largest roughly square image. It is resized like embedded art.
+
+--keep-missing: tracks listed in the previous <out>/library.json whose files no longer exist under
+music_dir are kept as they were (album, waveform, lyrics, spectrogram and cover files included), so a
+large library can be indexed in batches and kept only in the bucket. New tracks still join kept albums.
+
 Each track also gets `peaks`: a 96-bin loudness envelope for the waveform seek bar, base64 of 96 bytes
 (0..255). The audio is decoded once with ffmpeg to 4 kHz mono 16-bit PCM; each bin holds the mean
 absolute amplitude of its slice of the track, divided by the loudest bin of that track, then shaped with
@@ -38,6 +47,10 @@ from concurrent.futures import ThreadPoolExecutor
 import quality
 
 AUDIO_EXTENSIONS = (".flac", ".m4a", ".mp3", ".wav", ".aiff", ".aif", ".ogg", ".opus")
+IMAGE_EXTENSIONS = (".jpg", ".jpeg", ".png")
+COVER_DIRS = ("cover", "covers", "artwork", "artworks", "scans")
+COVER_NAMES = ("front", "cover", "folder", "album")
+NOT_FRONT = re.compile(r"\b(back|inside|inlay|tray|rear|booklet|cd\d*|disc\d*|label|insert)\b")
 PEAK_BINS = 96
 PEAKS_CACHE_VERSION = 1
 QUALITY_CACHE_VERSION = 1
@@ -159,14 +172,91 @@ def probe(root, key):
     }
 
 
-def extract_cover(root, key, dst):
+def extract_cover(src, dst):
+    """First picture of src (an audio file's attached picture or an image file) as a <=512px JPEG.
+    src None: only an already extracted dst counts."""
     if os.path.exists(dst):
         return True
+    if src is None:
+        return False
     result = subprocess.run(
-        ["ffmpeg", "-v", "error", "-y", "-i", os.path.join(root, key), "-map", "0:v:0", "-frames:v", "1",
+        ["ffmpeg", "-v", "error", "-y", "-i", src, "-map", "0:v:0", "-frames:v", "1",
          "-vf", "scale='min(512,iw)':-2", "-q:v", "4", "-f", "image2", "-c:v", "mjpeg", dst],
         capture_output=True)
     return result.returncode == 0 and os.path.exists(dst)
+
+
+def image_size(path):
+    out = subprocess.run(["ffprobe", "-v", "error", "-select_streams", "v:0", "-show_entries", "stream=width,height",
+                          "-of", "csv=p=0", path], capture_output=True, text=True).stdout.strip().split(",")
+    try:
+        return int(out[0]), int(out[1])
+    except (ValueError, IndexError):
+        return 0, 0
+
+
+def folder_cover(root, folders):
+    """Best cover image in folders (relative dirs) or their cover-art subfolders; absolute path or None."""
+    images = []
+    for folder in folders:
+        base = os.path.join(root, folder)
+        try:
+            entries = sorted(os.scandir(base), key=lambda e: e.name)
+        except OSError:
+            continue
+        for entry in entries:
+            if entry.is_dir() and fold(entry.name) in COVER_DIRS:
+                try:
+                    images += [e.path for e in sorted(os.scandir(entry.path), key=lambda e: e.name) if e.is_file()]
+                except OSError:
+                    pass
+            elif entry.is_file():
+                images.append(entry.path)
+    images = [p for p in images if p.lower().endswith(IMAGE_EXTENSIONS) and not os.path.basename(p).startswith(".")]
+    named = []
+    for path in images:
+        stem = fold(os.path.splitext(os.path.basename(path))[0])
+        rank = next((i for i, word in enumerate(COVER_NAMES) if word in stem), None)
+        if rank is not None and not NOT_FRONT.search(stem):
+            named.append((rank, path))
+    if named:
+        return min(named)[1]
+    square = []
+    for path in images:
+        width, height = image_size(path)
+        if width and height and 0.8 <= width / height <= 1.25:
+            square.append((-width * height, path))
+    return min(square)[1] if square else None
+
+
+def kept_tracks(out_dir, root, present, spectra_dir):
+    """Tracks of the previous library.json whose files are gone, in the shape index_file() returns."""
+    try:
+        with open(os.path.join(out_dir, "library.json"), encoding="utf-8") as f:
+            previous = json.load(f)
+    except (OSError, ValueError):
+        return []
+    albums = {a["id"]: a for a in previous.get("albums", [])}
+    kept = []
+    for t in previous.get("tracks", []):
+        album = albums.get(t.get("albumId"))
+        if album is None or t["file"] in present or os.path.exists(os.path.join(root, t["file"])):
+            continue
+        t = dict(t)
+        had_spectrum, lyrics = t.pop("spectrum", False), t.pop("lyrics", None)
+        spectrum = next((ext for ext in ("webp", "png")
+                         if had_spectrum and os.path.exists(os.path.join(spectra_dir, f"{t['id']}.{ext}"))), None)
+        if not os.path.exists(os.path.join(out_dir, "lyrics", f"{t['id']}.lrc")):
+            lyrics = None
+        t.update({
+            "albumTitle": album["title"], "albumArtist": album["artist"], "_cover": False,
+            "_keptCover": album.get("cover", False), "_peaks": t.pop("peaks", None),
+            "_lyrics": (None, lyrics), "_cacheKey": None,
+            "_analysis": {"quality": t.pop("quality", {"verdict": "unknown"}), "spectrum": spectrum},
+        })
+        del t["albumId"]
+        kept.append(t)
+    return kept
 
 
 def compute_peaks(path):
@@ -252,9 +342,11 @@ def index_file(root, key, caches, fresh, spectra_dir):
 
 
 def write_lyrics(lyrics_dir, tracks):
-    """Sync <out>/lyrics with the tracks' chosen lyrics; returns (written, removed) file counts."""
+    """Sync <out>/lyrics with the tracks' chosen lyrics; returns (written, removed) file counts.
+    Kept tracks (--keep-missing) have no text but a kind; their existing files stay."""
     os.makedirs(lyrics_dir, exist_ok=True)
     wanted = {f"{t['id']}.lrc": t["_lyrics"][0] for t in tracks if t["_lyrics"][0]}
+    keep = {f"{t['id']}.lrc" for t in tracks if t["_lyrics"][0] is None and t["_lyrics"][1]}
     written = removed = 0
     for name, text in wanted.items():
         path, data = os.path.join(lyrics_dir, name), text.encode("utf-8")
@@ -268,7 +360,7 @@ def write_lyrics(lyrics_dir, tracks):
             f.write(data)
         written += 1
     for name in os.listdir(lyrics_dir):
-        if name.endswith(".lrc") and name not in wanted:
+        if name.endswith(".lrc") and name not in wanted and name not in keep:
             os.remove(os.path.join(lyrics_dir, name))
             removed += 1
     return written, removed
@@ -279,6 +371,8 @@ def main():
     parser.add_argument("music_dir", help="local folder that mirrors the bucket's music files")
     parser.add_argument("--out", default="library-data", help="output folder (default: library-data)")
     parser.add_argument("--jobs", type=int, default=os.cpu_count() or 4)
+    parser.add_argument("--keep-missing", action="store_true",
+                        help="keep tracks of the previous library.json whose files are no longer in music_dir")
     args = parser.parse_args()
 
     root = os.path.abspath(args.music_dir)
@@ -297,13 +391,17 @@ def main():
     fresh = {"peaks": {}, "quality": {}}
     with ThreadPoolExecutor(args.jobs) as pool:
         tracks = [t for t in pool.map(lambda k: index_file(root, k, caches, fresh, spectra_dir), keys) if t]
+    present = set(keys)
+    kept_list = kept_tracks(args.out, root, present, spectra_dir) if args.keep_missing else []
+    tracks += kept_list
     if not tracks:
         sys.exit(f"no audio files found under {root}")
     # Keep only entries for files that still exist, so the caches never grow without bound.
-    kept = {t["_cacheKey"]: t["_peaks"] for t in tracks if t["_peaks"] is not None}
+    local = [t for t in tracks if t["_cacheKey"]]
+    kept = {t["_cacheKey"]: t["_peaks"] for t in local if t["_peaks"] is not None}
     with open(peaks_cache_path, "w", encoding="utf-8") as f:
         json.dump({"version": PEAKS_CACHE_VERSION, "entries": kept}, f, ensure_ascii=False, separators=(",", ":"))
-    kept = {t["_cacheKey"]: t["_analysis"] for t in tracks}
+    kept = {t["_cacheKey"]: t["_analysis"] for t in local}
     with open(quality_cache_path, "w", encoding="utf-8") as f:
         json.dump({"version": QUALITY_CACHE_VERSION, "entries": kept}, f, ensure_ascii=False, separators=(",", ":"))
     wanted = {f"{t['id']}.{t['_analysis']['spectrum']}" for t in tracks if t["_analysis"]["spectrum"]}
@@ -314,14 +412,23 @@ def main():
     groups = collections.defaultdict(list)
     for t in tracks:
         groups[(fold(t["albumTitle"]), fold(t["albumArtist"]))].append(t)
-
+    folder_albums = collections.defaultdict(set)  # folder -> albums with a local track in it
+    for group_key, group in groups.items():
+        for t in group:
+            if t["_cacheKey"]:
+                folder_albums[os.path.dirname(t["file"])].add(group_key)
     albums, cover_jobs = [], []
     for group_key, group in groups.items():
         group.sort(key=lambda t: (t["disc"], t["n"], fold(t["title"])))
         album_id = short_id(*group_key)
         source = next((t for t in group if t["_cover"]), None)
         if source:
-            cover_jobs.append((album_id, source["file"]))
+            cover_jobs.append((album_id, os.path.join(root, source["file"])))
+        else:
+            folders = sorted({os.path.dirname(t["file"]) for t in group if t["_cacheKey"]})
+            image = folder_cover(root, [d for d in folders if folder_albums[d] == {group_key}])
+            if image or any(t.get("_keptCover") for t in group):
+                cover_jobs.append((album_id, image))  # None: reuse the kept album's cover file
         albums.append({
             "id": album_id,
             "title": group[0]["albumTitle"],
@@ -335,7 +442,7 @@ def main():
             t["albumId"] = album_id
 
     with ThreadPoolExecutor(args.jobs) as pool:
-        results = pool.map(lambda job: extract_cover(root, job[1], os.path.join(covers_dir, f"{job[0]}.jpg")), cover_jobs)
+        results = pool.map(lambda job: extract_cover(job[1], os.path.join(covers_dir, f"{job[0]}.jpg")), cover_jobs)
         with_cover = {album_id for (album_id, _), ok in zip(cover_jobs, results) if ok}
     for album in albums:
         album["cover"] = album["id"] in with_cover
@@ -344,6 +451,7 @@ def main():
         peaks, lyrics, analysis = t["_peaks"], t["_lyrics"][1], t["_analysis"]
         for k in ("_cover", "albumTitle", "albumArtist", "_peaks", "_cacheKey", "_lyrics", "_analysis"):
             del t[k]
+        t.pop("_keptCover", None)
         if peaks is not None:
             t["peaks"] = peaks
         if lyrics:
@@ -368,7 +476,8 @@ def main():
         json.dump(library, f, ensure_ascii=False, separators=(",", ":"))
     with_peaks = sum(1 for t in tracks if "peaks" in t)
     with_spectrum = sum(1 for t in tracks if t.get("spectrum"))
-    print(f"{len(tracks)} tracks, {len(albums)} albums, {len(with_cover)} covers, "
+    print(f"{len(tracks)} tracks ({len(kept_list)} kept from the previous index), {len(albums)} albums, "
+          f"{len(with_cover)} covers, "
           f"{with_peaks} waveforms ({len(fresh['peaks'])} decoded, {with_peaks - len(fresh['peaks'])} cached), "
           f"{with_lyrics} lyrics ({synced} synced; {lyrics_written} written, {lyrics_removed} removed), "
           f"{with_spectrum} spectrograms ({len(fresh['quality'])} analysed), "
