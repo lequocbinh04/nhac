@@ -89,7 +89,8 @@ export default {
 		if (path === "/api/login" && request.method === "POST") return handleLogin(request, env);
 		if (PUBLIC_PATHS[path] || path.startsWith(PUBLIC_PREFIX)) {
 			if (path === "/login" && (await validSession(env, request))) return Response.redirect(new URL("/", url).toString(), 302);
-			return env.ASSETS.fetch(path === "/login" ? new Request(new URL("/login.html", url), request) : request);
+			// The assets layer serves login.html at /login itself (and redirects /login.html -> /login).
+			return env.ASSETS.fetch(request);
 		}
 
 		if (!(await validSession(env, request))) {
