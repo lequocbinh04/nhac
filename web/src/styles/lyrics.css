@@ -24,7 +24,8 @@
 
 .lyric {
 	display: block;
-	max-width: 32ch;
+	/* Wrap at 1/1.04 of the pane so the active line's scale(1.04) never crosses the clipped edge. */
+	max-width: min(32ch, calc(100% / 1.04));
 	padding: 6px 0;
 	font-size: 28px;
 	font-weight: 600;
