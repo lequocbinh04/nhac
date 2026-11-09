@@ -14,3 +14,5 @@ __pycache__/
 # Demo library output (regenerate with tools/make_demo_library.py)
 demo-music/
 demo-library-data/
+# Build output of `npm run build`
+public/
