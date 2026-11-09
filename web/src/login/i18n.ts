@@ -1,8 +1,7 @@
 const vi = {
 	title: "Nhạc",
 	brand: "Nhạc",
-	status: "chờ tín hiệu",
-	lede: "Thư viện lossless riêng. Nhập mật khẩu để vào nghe.",
+	lede: "Thư viện lossless riêng.",
 	password: "Mật khẩu",
 	show: "Hiện mật khẩu",
 	hide: "Ẩn mật khẩu",
@@ -22,8 +21,7 @@ export type Key = keyof typeof vi;
 const en: Record<Key, string> = {
 	title: "nhac",
 	brand: "nhac",
-	status: "awaiting signal",
-	lede: "Your private lossless library. Enter the password to listen.",
+	lede: "Your private lossless library.",
 	password: "Password",
 	show: "Show password",
 	hide: "Hide password",

@@ -12,41 +12,26 @@
 		<link rel="manifest" href="/manifest.webmanifest" />
 		<link rel="preload" as="font" type="font/woff2" crossorigin href="../node_modules/@fontsource-variable/inter/files/inter-latin-wght-normal.woff2" />
 		<link rel="preload" as="font" type="font/woff2" crossorigin href="../node_modules/@fontsource-variable/inter/files/inter-vietnamese-wght-normal.woff2" />
-		<noscript><style>.enter, .art { opacity: 1 !important; translate: none !important; scale: none !important; }</style></noscript>
+		<noscript><style>.enter { opacity: 1 !important; translate: none !important; }</style></noscript>
 		<script type="module" src="/src/login/main.ts"></script>
 	</head>
 	<body>
 		<main class="stage">
-			<picture class="art" aria-hidden="true">
-				<source media="(max-width: 959px)" type="image/avif" srcset="/src/login/art/tall-560.avif 560w, /src/login/art/tall-840.avif 840w" sizes="100vw" />
-				<source media="(max-width: 959px)" type="image/webp" srcset="/src/login/art/tall-560.webp 560w, /src/login/art/tall-840.webp 840w" sizes="100vw" />
-				<source media="(max-width: 959px)" srcset="/src/login/art/tall-560.jpg 560w, /src/login/art/tall-840.jpg 840w" sizes="100vw" />
-				<source type="image/avif" srcset="/src/login/art/wide-1200.avif 1200w, /src/login/art/wide-1672.avif 1672w" sizes="100vw" />
-				<source type="image/webp" srcset="/src/login/art/wide-1200.webp 1200w, /src/login/art/wide-1672.webp 1672w" sizes="100vw" />
-				<img
-					class="art-img"
-					src="/src/login/art/wide-1672.jpg"
-					srcset="/src/login/art/wide-1200.jpg 1200w, /src/login/art/wide-1672.jpg 1672w"
-					sizes="100vw"
-					width="1672"
-					height="941"
-					alt=""
-					fetchpriority="high"
-					decoding="async"
-				/>
-			</picture>
+			<!-- Record grooves: drawn by src/login/disc.ts at the current size, crisp at any DPR. -->
+			<div class="disc" id="disc" aria-hidden="true">
+				<div class="spin"><svg class="grooves"></svg></div>
+				<div class="sheen"></div>
+				<svg class="stylus"></svg>
+			</div>
+			<p class="corner" aria-hidden="true"><b>33<span class="frac"><sup>1</sup>⁄<sub>3</sub></span></b> · FLAC 24/192</p>
 
 			<section class="panel" aria-labelledby="title">
-				<p class="eyebrow enter" style="--n: 0">
-					<svg class="mark" viewBox="0 0 32 32" aria-hidden="true"><g stroke="currentColor" stroke-width="2.6" stroke-linecap="round"><line x1="7" y1="13" x2="7" y2="19" /><line x1="11.5" y1="10" x2="11.5" y2="22" /><line x1="16" y1="7" x2="16" y2="25" /><line x1="20.5" y1="10.5" x2="20.5" y2="21.5" /><line x1="25" y1="13.5" x2="25" y2="18.5" /></g></svg>
-					<span data-i18n="status">chờ tín hiệu</span>
-				</p>
-				<h1 id="title" class="title enter" style="--n: 1" data-i18n="brand">Nhạc</h1>
-				<p class="lede enter" style="--n: 2" data-i18n="lede">Thư viện lossless riêng. Nhập mật khẩu để vào nghe.</p>
+				<h1 id="title" class="title enter" style="--n: 0" data-i18n="brand">Nhạc</h1>
+				<p class="lede enter" style="--n: 1" data-i18n="lede">Thư viện lossless riêng.</p>
 
 				<form class="form" id="login" method="post" action="/api/login" novalidate>
 					<input class="sr-only" type="text" name="username" autocomplete="username" value="nhac" tabindex="-1" aria-hidden="true" />
-					<div class="field-group enter" style="--n: 3">
+					<div class="field-group enter" style="--n: 2">
 						<label class="label" for="password" data-i18n="password">Mật khẩu</label>
 						<div class="field" id="field">
 							<svg class="field-icon" viewBox="0 0 256 256" aria-hidden="true"><path d="M208,80H176V56a48,48,0,0,0-96,0V80H48A16,16,0,0,0,32,96V208a16,16,0,0,0,16,16H208a16,16,0,0,0,16-16V96A16,16,0,0,0,208,80ZM96,56a32,32,0,0,1,64,0V80H96ZM208,208H48V96H208V208Z" /></svg>
@@ -76,14 +61,14 @@
 							</span>
 						</p>
 					</div>
-					<button class="submit enter" id="submit" type="submit" style="--n: 4">
+					<button class="submit enter" id="submit" type="submit" style="--n: 3">
 						<span class="submit-label" data-i18n="submit">Vào nghe</span>
 						<svg class="icon submit-arrow" viewBox="0 0 256 256" aria-hidden="true"><path d="M221.66,133.66l-72,72a8,8,0,0,1-11.32-11.32L196.69,136H40a8,8,0,0,1,0-16H196.69L138.34,61.66a8,8,0,0,1,11.32-11.32l72,72A8,8,0,0,1,221.66,133.66Z" /></svg>
 						<span class="submit-meter" aria-hidden="true"><i></i><i></i><i></i></span>
 					</button>
 				</form>
 
-				<p class="spec enter" style="--n: 5" data-i18n="spec">FLAC · ALAC · WAV · tới 24-bit / 192 kHz</p>
+				<p class="spec enter" style="--n: 4" data-i18n="spec">FLAC · ALAC · WAV · tới 24-bit / 192 kHz</p>
 			</section>
 		</main>
 	</body>

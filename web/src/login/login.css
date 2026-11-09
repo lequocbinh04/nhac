@@ -1,4 +1,4 @@
-/* Login page (public). Art is the hero; the form sits in the artwork's own negative space. */
+/* Login page (public), direction "C · Groove": a huge wordmark beside a hairline vector record. */
 
 *,
 *::before,
@@ -20,7 +20,6 @@ html {
 body {
 	margin: 0;
 	min-height: 100dvh;
-	overflow-x: hidden;
 }
 
 button,
@@ -41,71 +40,146 @@ input {
 	border: 0;
 }
 
+[hidden] {
+	display: none !important;
+}
+
 /* ---------- Stage ---------- */
 
 .stage {
 	position: relative;
 	isolation: isolate;
+	/* The record is larger than the viewport; clip it without creating a scroll container. */
+	overflow: clip;
 	min-height: 100dvh;
 	display: flex;
 	flex-direction: column;
 	justify-content: flex-end;
-	padding: 0 max(24px, env(safe-area-inset-right)) calc(max(20px, env(safe-area-inset-bottom)) + 12px) max(24px, env(safe-area-inset-left));
+	padding:
+		calc(max(20px, env(safe-area-inset-top)) + 34svh)
+		max(24px, env(safe-area-inset-right))
+		calc(max(20px, env(safe-area-inset-bottom)) + 16px)
+		max(24px, env(safe-area-inset-left));
 }
 
-/* ---------- Art ---------- */
+/* ---------- Record ---------- */
 
-.art {
+/* Box centred on (--cx, --cy); disc.ts sets the size and draws the SVG at that size. */
+.disc {
 	position: absolute;
 	z-index: -1;
-	inset: 0 0 auto;
-	height: min(64svh, 620px);
-	display: block;
-	overflow: hidden;
+	left: calc(var(--cx, 77vw) - var(--size, 0px) / 2);
+	top: calc(var(--cy, 236px) + env(safe-area-inset-top) - var(--size, 0px) / 2);
+	width: var(--size, 0px);
+	height: var(--size, 0px);
 	pointer-events: none;
 	user-select: none;
-	/* The plate dissolves into the page instead of ending on an edge. */
-	-webkit-mask-image: linear-gradient(to bottom, #000 0, #000 52%, transparent 100%);
-	mask-image: linear-gradient(to bottom, #000 0, #000 52%, transparent 100%);
-	opacity: 0;
-	scale: 1.02;
-	transition:
-		opacity 560ms var(--ease-out),
-		scale 560ms var(--ease-out);
 }
 
-.art.is-loaded {
-	opacity: 1;
-	scale: 1;
+.spin,
+.sheen,
+.stylus {
+	position: absolute;
+	inset: 0;
+	width: 100%;
+	height: 100%;
 }
 
-.art-img {
+.spin {
+	will-change: transform;
+	animation: spin 150s linear infinite;
+}
+
+.grooves {
 	display: block;
 	width: 100%;
 	height: 100%;
-	object-fit: cover;
-	object-position: 50% 42%;
-	transform: scale(1.04);
-	transform-origin: 40% 50%;
+	overflow: visible;
 }
 
-/* One ambient effect: a very slow drift, like the signal breathing. Starts once the plate is in. */
-.art.is-loaded .art-img {
-	will-change: transform;
-	animation: drift 56s var(--ease-in-out) 600ms infinite alternate both;
+.grooves .hub {
+	fill: var(--panel);
+	stroke: var(--line-2);
+	stroke-width: 1;
 }
 
-html[data-hidden] .art-img {
+.grooves .label-text {
+	font-family: var(--font-mono);
+	font-size: 10.5px;
+	fill: var(--t3);
+}
+
+.grooves .spindle {
+	fill: var(--bg);
+	stroke: var(--line-2);
+	stroke-width: 1;
+}
+
+/* Static light on the record: two soft opposite wedges, limited to the grooved area. */
+.sheen {
+	border-radius: 50%;
+	background: conic-gradient(
+		from 292deg,
+		rgb(230 238 241 / 0) 0deg,
+		rgb(230 238 241 / 0.055) 26deg,
+		rgb(230 238 241 / 0) 58deg,
+		rgb(230 238 241 / 0) 180deg,
+		rgb(230 238 241 / 0.04) 206deg,
+		rgb(230 238 241 / 0) 238deg
+	);
+	-webkit-mask-image: radial-gradient(closest-side, transparent var(--inner, 14%), #000 calc(var(--inner, 14%) + 6%), #000 var(--fade, 50%), transparent 100%);
+	mask-image: radial-gradient(closest-side, transparent var(--inner, 14%), #000 calc(var(--inner, 14%) + 6%), #000 var(--fade, 50%), transparent 100%);
+}
+
+/* The read point stays still while the record turns beneath it. */
+.stylus {
+	overflow: visible;
+	fill: none;
+	stroke: var(--acc);
+	stroke-width: 1.25;
+	stroke-linecap: round;
+}
+
+@keyframes spin {
+	to {
+		transform: rotate(360deg);
+	}
+}
+
+html[data-hidden] .spin {
 	animation-play-state: paused;
 }
 
-@keyframes drift {
-	from {
-		transform: scale(1.04) translate3d(0, 0, 0);
-	}
-	to {
-		transform: scale(1.07) translate3d(-1.6%, -0.9%, 0);
-	}
+.corner {
+	position: absolute;
+	z-index: 1;
+	top: max(20px, calc(env(safe-area-inset-top) + 12px));
+	left: max(24px, env(safe-area-inset-left));
+	margin: 0;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--t3);
+}
+
+.corner b {
+	font-weight: 400;
+	color: var(--acc);
+}
+
+/* "⅓" is outside the self-hosted subsets, so it is set as a built fraction in the same face. */
+.frac sup,
+.frac sub {
+	font-size: 0.66em;
+	line-height: 0;
+}
+
+.frac sup {
+	vertical-align: 0.42em;
+}
+
+.frac sub {
+	vertical-align: 0;
 }
 
 /* ---------- Panel ---------- */
@@ -114,42 +188,20 @@ html[data-hidden] .art-img {
 	position: relative;
 	width: 100%;
 	max-width: 440px;
-	margin: 0 auto;
-	padding-top: min(46svh, 420px);
-}
-
-.eyebrow {
-	display: flex;
-	align-items: center;
-	gap: var(--s-2);
-	margin: 0 0 var(--s-4);
-	font-family: var(--font-mono);
-	font-size: 12px;
-	line-height: 16px;
-	letter-spacing: 0.02em;
-	color: var(--t3);
-}
-
-.mark {
-	width: 18px;
-	height: 18px;
-	color: var(--acc);
-	flex: none;
 }
 
 .title {
-	margin: 0;
-	font-size: 60px;
-	line-height: 64px;
+	margin: 0 0 0 -0.055em;
+	font-size: clamp(88px, 30vw, 132px);
+	line-height: 0.92;
 	font-weight: 600;
-	letter-spacing: -0.035em;
+	letter-spacing: -0.065em;
 }
 
 .lede {
-	margin: var(--s-2) 0 0;
-	max-width: 30ch;
+	margin: 18px 0 0;
 	font-size: 17px;
-	line-height: 25px;
+	line-height: 24px;
 	color: var(--t2);
 	text-wrap: pretty;
 }
@@ -214,6 +266,11 @@ html[data-hidden] .art-img {
 	letter-spacing: 0.18em;
 }
 
+.input::selection {
+	background: rgb(111 194 182 / 0.32);
+	color: var(--t1);
+}
+
 .reveal {
 	display: grid;
 	place-items: center;
@@ -232,11 +289,6 @@ html[data-hidden] .art-img {
 .reveal:focus-visible {
 	outline: 2px solid var(--acc);
 	outline-offset: -2px;
-}
-
-.input::selection {
-	background: rgb(111 194 182 / 0.32);
-	color: var(--t1);
 }
 
 .reveal[aria-pressed="true"] {
@@ -283,10 +335,6 @@ html[data-hidden] .art-img {
 	height: 17px;
 }
 
-[hidden] {
-	display: none !important;
-}
-
 /* ---------- Submit ---------- */
 
 .submit {
@@ -325,7 +373,7 @@ html[data-hidden] .art-img {
 	background: var(--t2);
 }
 
-.submit-arrow {
+.submit .submit-arrow {
 	width: 20px;
 	height: 20px;
 }
@@ -378,7 +426,6 @@ html[data-hidden] .art-img {
 	font-size: 12px;
 	line-height: 16px;
 	color: var(--t3);
-	text-align: center;
 }
 
 @media (hover: hover) and (pointer: fine) {
@@ -390,15 +437,39 @@ html[data-hidden] .art-img {
 	}
 }
 
-/* ---------- Entrance ---------- */
+/* ---------- Entrance: the record settles, the panel rises in a 48ms stagger (<= 600ms) ---------- */
 
-.is-pending .enter {
+.is-pending .enter,
+.is-pending .disc,
+.is-pending .corner {
 	opacity: 0;
 }
 
+.is-in .disc {
+	transform-origin: 50% 50%;
+	animation: settle 560ms var(--ease-out) both;
+}
+
+.is-in .corner {
+	animation: fade 400ms var(--ease-out) 200ms both;
+}
+
 .is-in .enter {
-	animation: rise 320ms var(--ease-out) both;
+	animation: rise 360ms var(--ease-out) both;
 	animation-delay: calc(40ms + var(--n, 0) * 48ms);
+}
+
+@keyframes settle {
+	from {
+		opacity: 0;
+		scale: 1.02;
+	}
+}
+
+@keyframes fade {
+	from {
+		opacity: 0;
+	}
 }
 
 @keyframes rise {
@@ -406,107 +477,61 @@ html[data-hidden] .art-img {
 		opacity: 0;
 		translate: 0 8px;
 	}
-	to {
-		opacity: 1;
-		translate: 0 0;
-	}
 }
 
-/* ---------- Desktop: full-bleed plate, form in its right-hand silence ---------- */
+/* ---------- Wide: wordmark and form on the left, the record on the right ---------- */
 
 @media (min-width: 960px) {
 	.stage {
-		display: grid;
-		grid-template-columns: 1fr minmax(360px, 420px);
-		column-gap: clamp(48px, 9vw, 160px);
-		align-items: center;
-		justify-content: stretch;
-		padding: max(48px, env(safe-area-inset-top)) clamp(48px, 8vw, 144px) max(48px, env(safe-area-inset-bottom));
+		justify-content: center;
+		padding:
+			max(48px, env(safe-area-inset-top))
+			clamp(48px, 6.7vw, 128px)
+			max(48px, env(safe-area-inset-bottom))
+			max(clamp(48px, 6.7vw, 128px), env(safe-area-inset-left));
 	}
 
-	.art {
-		inset: 0;
-		height: auto;
-		-webkit-mask-image: none;
-		mask-image: none;
+	.disc {
+		top: calc(var(--cy, 50vh) - var(--size, 0px) / 2);
 	}
 
-	/* Protects the form wherever the plate's subject reaches under it (narrow or tall windows). */
-	.art::after {
-		content: "";
-		position: absolute;
-		inset: 0;
-		background:
-			linear-gradient(to left, var(--bg) 0, rgb(11 16 20 / 0.86) 26%, rgb(11 16 20 / 0) 52%),
-			linear-gradient(to top, rgb(11 16 20 / 0.7) 0, rgb(11 16 20 / 0) 22%);
-	}
-
-	.art-img {
-		object-position: 0% 50%;
-		transform-origin: 30% 50%;
+	.corner {
+		top: auto;
+		left: auto;
+		right: max(48px, env(safe-area-inset-right));
+		bottom: max(40px, env(safe-area-inset-bottom));
 	}
 
 	.panel {
-		grid-column: 2;
-		max-width: none;
-		margin: 0;
-		padding: 0;
-	}
-
-	.eyebrow {
-		margin-bottom: var(--s-5);
+		max-width: 400px;
 	}
 
 	.title {
-		font-size: 88px;
-		line-height: 88px;
-		letter-spacing: -0.045em;
+		font-size: clamp(150px, min(18vw, 29vh), 340px);
+		line-height: 0.91;
+		white-space: nowrap;
 	}
 
 	.lede {
-		margin-top: var(--s-4);
+		margin-top: 28px;
 		font-size: 18px;
 		line-height: 28px;
 	}
-
-	.form {
-		margin-top: var(--s-7);
-	}
-
-	.spec {
-		text-align: left;
-	}
 }
 
-/* Narrow desktops: slide the plate left and deepen the scrim so the form never sits on bright lines. */
-@media (min-width: 960px) and (max-width: 1279px) {
-	.art {
-		inset: 0 16vw 0 -16vw;
-	}
-	.art::after {
-		background:
-			linear-gradient(to left, var(--bg) 0, var(--bg) 34%, rgb(11 16 20 / 0.9) 46%, rgb(11 16 20 / 0) 66%),
-			linear-gradient(to top, rgb(11 16 20 / 0.7) 0, rgb(11 16 20 / 0) 22%);
-	}
-}
-
-/* ---------- Reduced motion: no entrance, no drift, no shake (handled in JS) ---------- */
+/* ---------- Reduced motion: no entrance, no rotation, no shake (handled in JS) ---------- */
 
 @media (prefers-reduced-motion: reduce) {
-	.art,
-	.art.is-loaded {
-		opacity: 1;
-		scale: none;
-		transition: none;
-	}
-	.art .art-img,
-	.art.is-loaded .art-img {
+	.spin {
 		animation: none;
-		transform: none;
 		will-change: auto;
 	}
 	.is-pending .enter,
-	.is-in .enter {
+	.is-pending .disc,
+	.is-pending .corner,
+	.is-in .enter,
+	.is-in .disc,
+	.is-in .corner {
 		opacity: 1;
 		animation: none;
 	}

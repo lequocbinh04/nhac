@@ -3,6 +3,7 @@ import "@fontsource/jetbrains-mono/latin-400.css";
 import "@fontsource/jetbrains-mono/vietnamese-400.css";
 import "../styles/tokens.css";
 import "./login.css";
+import { mountDisc } from "./disc";
 import { localize, t, type Key } from "./i18n";
 
 const $ = <T extends HTMLElement>(id: string) => document.getElementById(id) as T;
@@ -17,25 +18,18 @@ const submitLabel = submit.querySelector<HTMLElement>(".submit-label")!;
 const caps = $<HTMLSpanElement>("caps");
 const error = $<HTMLSpanElement>("error");
 const errorText = $<HTMLSpanElement>("error-text");
-const art = document.querySelector<HTMLElement>(".art")!;
-const artImg = art.querySelector("img")!;
 
 const reducedMotion = matchMedia("(prefers-reduced-motion: reduce)");
 const finePointer = matchMedia("(hover: hover) and (pointer: fine)");
 
 localize();
 
-// Entrance: the form rises as soon as this runs; the art waits until its pixels are decoded
-// (capped) so it never fades in as an empty box.
-requestAnimationFrame(() => root.classList.replace("is-pending", "is-in"));
-const showArt = () => art.classList.add("is-loaded");
-if (artImg.complete) showArt();
-else {
-	artImg.decode().then(showArt, showArt);
-	setTimeout(showArt, 900);
-}
+mountDisc($<HTMLDivElement>("disc"));
 
-// The ambient drift is a CSS animation; stop it entirely while the tab is hidden.
+// Entrance: one orchestrated pass once the record is drawn (the record settles, the panel rises).
+requestAnimationFrame(() => root.classList.replace("is-pending", "is-in"));
+
+// The record's rotation is a CSS animation; stop it entirely while the tab is hidden.
 const syncVisibility = () => root.toggleAttribute("data-hidden", document.visibilityState === "hidden");
 document.addEventListener("visibilitychange", syncVisibility);
 syncVisibility();
