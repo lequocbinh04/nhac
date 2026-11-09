@@ -1,0 +1,523 @@
+/* Login page (public). Art is the hero; the form sits in the artwork's own negative space. */
+
+*,
+*::before,
+*::after {
+	box-sizing: border-box;
+}
+
+html {
+	background: var(--bg);
+	color: var(--t1);
+	font-family: var(--font-sans);
+	-webkit-font-smoothing: antialiased;
+	-moz-osx-font-smoothing: grayscale;
+	text-rendering: optimizeLegibility;
+	-webkit-text-size-adjust: 100%;
+	-webkit-tap-highlight-color: transparent;
+}
+
+body {
+	margin: 0;
+	min-height: 100dvh;
+	overflow-x: hidden;
+}
+
+button,
+input {
+	font: inherit;
+	color: inherit;
+}
+
+.sr-only {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	margin: -1px;
+	padding: 0;
+	overflow: hidden;
+	clip: rect(0 0 0 0);
+	white-space: nowrap;
+	border: 0;
+}
+
+/* ---------- Stage ---------- */
+
+.stage {
+	position: relative;
+	isolation: isolate;
+	min-height: 100dvh;
+	display: flex;
+	flex-direction: column;
+	justify-content: flex-end;
+	padding: 0 max(24px, env(safe-area-inset-right)) calc(max(20px, env(safe-area-inset-bottom)) + 12px) max(24px, env(safe-area-inset-left));
+}
+
+/* ---------- Art ---------- */
+
+.art {
+	position: absolute;
+	z-index: -1;
+	inset: 0 0 auto;
+	height: min(64svh, 620px);
+	display: block;
+	overflow: hidden;
+	pointer-events: none;
+	user-select: none;
+	/* The plate dissolves into the page instead of ending on an edge. */
+	-webkit-mask-image: linear-gradient(to bottom, #000 0, #000 52%, transparent 100%);
+	mask-image: linear-gradient(to bottom, #000 0, #000 52%, transparent 100%);
+	opacity: 0;
+	scale: 1.02;
+	transition:
+		opacity 560ms var(--ease-out),
+		scale 560ms var(--ease-out);
+}
+
+.art.is-loaded {
+	opacity: 1;
+	scale: 1;
+}
+
+.art-img {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: cover;
+	object-position: 50% 42%;
+	transform: scale(1.04);
+	transform-origin: 40% 50%;
+}
+
+/* One ambient effect: a very slow drift, like the signal breathing. Starts once the plate is in. */
+.art.is-loaded .art-img {
+	will-change: transform;
+	animation: drift 56s var(--ease-in-out) 600ms infinite alternate both;
+}
+
+html[data-hidden] .art-img {
+	animation-play-state: paused;
+}
+
+@keyframes drift {
+	from {
+		transform: scale(1.04) translate3d(0, 0, 0);
+	}
+	to {
+		transform: scale(1.07) translate3d(-1.6%, -0.9%, 0);
+	}
+}
+
+/* ---------- Panel ---------- */
+
+.panel {
+	position: relative;
+	width: 100%;
+	max-width: 440px;
+	margin: 0 auto;
+	padding-top: min(46svh, 420px);
+}
+
+.eyebrow {
+	display: flex;
+	align-items: center;
+	gap: var(--s-2);
+	margin: 0 0 var(--s-4);
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 16px;
+	letter-spacing: 0.02em;
+	color: var(--t3);
+}
+
+.mark {
+	width: 18px;
+	height: 18px;
+	color: var(--acc);
+	flex: none;
+}
+
+.title {
+	margin: 0;
+	font-size: 60px;
+	line-height: 64px;
+	font-weight: 600;
+	letter-spacing: -0.035em;
+}
+
+.lede {
+	margin: var(--s-2) 0 0;
+	max-width: 30ch;
+	font-size: 17px;
+	line-height: 25px;
+	color: var(--t2);
+	text-wrap: pretty;
+}
+
+.form {
+	margin: var(--s-6) 0 0;
+}
+
+.label {
+	display: block;
+	margin-bottom: var(--s-2);
+	font-size: 14px;
+	line-height: 20px;
+	font-weight: 500;
+	color: var(--t2);
+}
+
+/* ---------- Field ---------- */
+
+.field {
+	display: flex;
+	align-items: center;
+	gap: var(--s-3);
+	height: 56px;
+	padding: 0 var(--s-1) 0 var(--s-4);
+	border-radius: var(--r-md);
+	background: var(--raise);
+	outline: 2px solid transparent;
+	outline-offset: 2px;
+	transition: outline-color var(--d-fast) var(--ease-out);
+}
+
+.field:focus-within {
+	outline-color: var(--acc);
+}
+
+.field:has(.input[aria-invalid="true"]) {
+	outline-color: var(--danger);
+}
+
+.field-icon {
+	width: 21px;
+	height: 21px;
+	flex: none;
+	fill: var(--t2);
+}
+
+.input {
+	flex: 1;
+	min-width: 0;
+	height: 100%;
+	padding: 0;
+	border: 0;
+	background: none;
+	outline: none;
+	font-size: 17px;
+	caret-color: var(--acc);
+}
+
+.input[type="password"] {
+	font-size: 20px;
+	letter-spacing: 0.18em;
+}
+
+.reveal {
+	display: grid;
+	place-items: center;
+	flex: none;
+	width: 48px;
+	height: 48px;
+	padding: 0;
+	border: 0;
+	border-radius: var(--r-sm);
+	background: none;
+	color: var(--t3);
+	cursor: pointer;
+	transition: color var(--d-fast) var(--ease-out);
+}
+
+.reveal:focus-visible {
+	outline: 2px solid var(--acc);
+	outline-offset: -2px;
+}
+
+.input::selection {
+	background: rgb(111 194 182 / 0.32);
+	color: var(--t1);
+}
+
+.reveal[aria-pressed="true"] {
+	color: var(--t1);
+}
+
+.reveal[aria-pressed="true"] .icon-show,
+.reveal[aria-pressed="false"] .icon-hide {
+	display: none;
+}
+
+.icon {
+	width: 21px;
+	height: 21px;
+	fill: currentColor;
+	flex: none;
+}
+
+/* Fixed-height line so hints and errors never push the button. */
+.message {
+	display: flex;
+	align-items: center;
+	min-height: 36px;
+	margin: 0;
+	padding-top: var(--s-2);
+	font-size: 14px;
+	line-height: 20px;
+	color: var(--t2);
+}
+
+.caps,
+.error {
+	display: inline-flex;
+	align-items: center;
+	gap: 6px;
+}
+
+.error {
+	color: var(--danger);
+}
+
+.error .icon {
+	width: 17px;
+	height: 17px;
+}
+
+[hidden] {
+	display: none !important;
+}
+
+/* ---------- Submit ---------- */
+
+.submit {
+	position: relative;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: var(--s-2);
+	width: 100%;
+	height: 56px;
+	margin-top: var(--s-1);
+	padding: 0 var(--s-5);
+	border: 0;
+	border-radius: var(--r-md);
+	background: var(--t1);
+	color: var(--bg);
+	font-size: 17px;
+	font-weight: 600;
+	cursor: pointer;
+	transition:
+		scale var(--d-press) var(--ease-out),
+		background-color var(--d-fast) var(--ease-out);
+}
+
+.submit:active:not(:disabled) {
+	scale: 0.97;
+}
+
+.submit:focus-visible {
+	outline: 2px solid var(--acc);
+	outline-offset: 3px;
+}
+
+.submit:disabled {
+	cursor: progress;
+	background: var(--t2);
+}
+
+.submit-arrow {
+	width: 20px;
+	height: 20px;
+}
+
+/* Busy: the arrow becomes a tiny three-bar meter. */
+.submit-meter {
+	display: none;
+	align-items: center;
+	gap: 3px;
+	height: 16px;
+}
+
+.submit-meter i {
+	width: 3px;
+	height: 16px;
+	border-radius: 2px;
+	background: currentColor;
+	transform-origin: 50% 100%;
+	animation: level 720ms var(--ease-in-out) infinite alternate;
+}
+
+.submit-meter i:nth-child(2) {
+	animation-delay: -240ms;
+}
+
+.submit-meter i:nth-child(3) {
+	animation-delay: -480ms;
+}
+
+@keyframes level {
+	from {
+		transform: scaleY(0.3);
+	}
+	to {
+		transform: scaleY(1);
+	}
+}
+
+.form[data-busy] .submit-arrow {
+	display: none;
+}
+
+.form[data-busy] .submit-meter {
+	display: inline-flex;
+}
+
+.spec {
+	margin: var(--s-5) 0 0;
+	font-family: var(--font-mono);
+	font-size: 12px;
+	line-height: 16px;
+	color: var(--t3);
+	text-align: center;
+}
+
+@media (hover: hover) and (pointer: fine) {
+	.reveal:hover {
+		color: var(--t1);
+	}
+	.submit:hover:not(:disabled) {
+		background: #fff;
+	}
+}
+
+/* ---------- Entrance ---------- */
+
+.is-pending .enter {
+	opacity: 0;
+}
+
+.is-in .enter {
+	animation: rise 320ms var(--ease-out) both;
+	animation-delay: calc(40ms + var(--n, 0) * 48ms);
+}
+
+@keyframes rise {
+	from {
+		opacity: 0;
+		translate: 0 8px;
+	}
+	to {
+		opacity: 1;
+		translate: 0 0;
+	}
+}
+
+/* ---------- Desktop: full-bleed plate, form in its right-hand silence ---------- */
+
+@media (min-width: 960px) {
+	.stage {
+		display: grid;
+		grid-template-columns: 1fr minmax(360px, 420px);
+		column-gap: clamp(48px, 9vw, 160px);
+		align-items: center;
+		justify-content: stretch;
+		padding: max(48px, env(safe-area-inset-top)) clamp(48px, 8vw, 144px) max(48px, env(safe-area-inset-bottom));
+	}
+
+	.art {
+		inset: 0;
+		height: auto;
+		-webkit-mask-image: none;
+		mask-image: none;
+	}
+
+	/* Protects the form wherever the plate's subject reaches under it (narrow or tall windows). */
+	.art::after {
+		content: "";
+		position: absolute;
+		inset: 0;
+		background:
+			linear-gradient(to left, var(--bg) 0, rgb(11 16 20 / 0.86) 26%, rgb(11 16 20 / 0) 52%),
+			linear-gradient(to top, rgb(11 16 20 / 0.7) 0, rgb(11 16 20 / 0) 22%);
+	}
+
+	.art-img {
+		object-position: 0% 50%;
+		transform-origin: 30% 50%;
+	}
+
+	.panel {
+		grid-column: 2;
+		max-width: none;
+		margin: 0;
+		padding: 0;
+	}
+
+	.eyebrow {
+		margin-bottom: var(--s-5);
+	}
+
+	.title {
+		font-size: 88px;
+		line-height: 88px;
+		letter-spacing: -0.045em;
+	}
+
+	.lede {
+		margin-top: var(--s-4);
+		font-size: 18px;
+		line-height: 28px;
+	}
+
+	.form {
+		margin-top: var(--s-7);
+	}
+
+	.spec {
+		text-align: left;
+	}
+}
+
+/* Narrow desktops: slide the plate left and deepen the scrim so the form never sits on bright lines. */
+@media (min-width: 960px) and (max-width: 1279px) {
+	.art {
+		inset: 0 16vw 0 -16vw;
+	}
+	.art::after {
+		background:
+			linear-gradient(to left, var(--bg) 0, var(--bg) 34%, rgb(11 16 20 / 0.9) 46%, rgb(11 16 20 / 0) 66%),
+			linear-gradient(to top, rgb(11 16 20 / 0.7) 0, rgb(11 16 20 / 0) 22%);
+	}
+}
+
+/* ---------- Reduced motion: no entrance, no drift, no shake (handled in JS) ---------- */
+
+@media (prefers-reduced-motion: reduce) {
+	.art,
+	.art.is-loaded {
+		opacity: 1;
+		scale: none;
+		transition: none;
+	}
+	.art .art-img,
+	.art.is-loaded .art-img {
+		animation: none;
+		transform: none;
+		will-change: auto;
+	}
+	.is-pending .enter,
+	.is-in .enter {
+		opacity: 1;
+		animation: none;
+	}
+	.submit {
+		transition: background-color var(--d-fast) var(--ease-out);
+	}
+	.submit:active:not(:disabled) {
+		scale: none;
+	}
+	.submit-meter i {
+		animation: none;
+		transform: scaleY(0.6);
+	}
+}
