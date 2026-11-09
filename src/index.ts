@@ -105,7 +105,7 @@ export default {
 		}
 
 		if (!(await validSession(env, request))) {
-			if (path.startsWith("/api/") || path.startsWith("/stream/") || path.startsWith("/cover/")) {
+			if (path.startsWith("/api/") || path.startsWith("/stream/") || path.startsWith("/cover/") || path.startsWith("/lyrics/")) {
 				return json({ error: "unauthorized" }, 401);
 			}
 			const login = new URL("/login", url);
@@ -123,6 +123,11 @@ export default {
 			const file = path.slice("/cover/".length);
 			if (!/^[0-9a-f]{12}\.jpg$/.test(file)) return new Response("Not found", { status: 404 });
 			return serveObject(request, env, `${env.LIBRARY_PREFIX}covers/${file}`, "private, max-age=2592000");
+		}
+		if (path.startsWith("/lyrics/") && isRead) {
+			const id = path.slice("/lyrics/".length);
+			if (!/^[0-9a-f]{12}$/.test(id)) return new Response("Not found", { status: 404 });
+			return serveObject(request, env, `${env.LIBRARY_PREFIX}lyrics/${id}.lrc`, "private, no-cache");
 		}
 		if (path.startsWith("/stream/") && isRead) {
 			const key = trackKey(path, env.LIBRARY_PREFIX);

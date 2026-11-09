@@ -93,7 +93,7 @@ describe("password gate", () => {
 	});
 
 	it("answers unauthenticated API, stream and cover requests with 401 JSON", async () => {
-		for (const path of ["/api/library", "/stream/song.flac", "/cover/aaaaaaaaaaaa.jpg"]) {
+		for (const path of ["/api/library", "/stream/song.flac", "/cover/aaaaaaaaaaaa.jpg", "/lyrics/bbbbbbbbbbbb"]) {
 			const res = await get(path);
 			expect(res.status, path).toBe(401);
 			expect(res.headers.get("Content-Type")).toContain("application/json");
@@ -235,6 +235,26 @@ describe("covers", () => {
 			const res = await withSession(path);
 			expect(res.status, path).toBe(404);
 			await res.body?.cancel();
+		}
+	});
+});
+
+describe("lyrics", () => {
+	const LRC = "[00:01.00]Dòng một\n[00:04.50]Dòng hai\n";
+	beforeAll(async () => {
+		await env.MUSIC.put("_nhac/lyrics/bbbbbbbbbbbb.lrc", LRC);
+	});
+
+	it("serves a track's lyrics as UTF-8 text", async () => {
+		const res = await withSession("/lyrics/bbbbbbbbbbbb");
+		expect(res.status).toBe(200);
+		expect(res.headers.get("Content-Type")).toBe("text/plain; charset=utf-8");
+		expect(await res.text()).toBe(LRC);
+	});
+
+	it("404s for missing lyrics and malformed ids", async () => {
+		for (const path of ["/lyrics/cccccccccccc", "/lyrics/bbbbbbbbbbbb.lrc", "/lyrics/..%2Flibrary", "/lyrics/"]) {
+			expect((await withSession(path)).status, path).toBe(404);
 		}
 	});
 });

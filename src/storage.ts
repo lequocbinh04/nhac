@@ -11,6 +11,7 @@ const CONTENT_TYPES: Record<string, string> = {
 	opus: "audio/ogg",
 	json: "application/json; charset=utf-8",
 	jpg: "image/jpeg",
+	lrc: "text/plain; charset=utf-8",
 };
 
 /** Serve one object from the configured bucket, honouring Range and conditional request headers. */
