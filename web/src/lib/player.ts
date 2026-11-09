@@ -6,14 +6,13 @@ import { signal } from "@preact/signals";
 import { coverUrl, streamUrl } from "./format";
 import { dict } from "./i18n";
 import { enableMeter, resumeMeter } from "./meter";
+import { preloadFor, shouldPreloadNext } from "./playback";
 import * as Q from "./queue";
 import { keepAwake, kick } from "./ticker";
 import { toast } from "./toast";
 import type { Track } from "./types";
 
 const STORE_KEY = "nhac.player";
-/** Start buffering the next track this many seconds before the current one ends. */
-const PRELOAD_LEAD_S = 45;
 /** No progress for this long while playing counts as a stalled stream. */
 const STALL_MS = 12_000;
 const SAVE_EVERY_MS = 5_000;
@@ -173,12 +172,17 @@ function armStall() {
 function maybePreload() {
 	const q = queue.value;
 	const ni = Q.nextIndex(q, true);
-	if (ni === null || ni === q.index) return;
-	const id = q.items[ni];
-	if (spareId === id) return;
+	const id = ni === null || ni === q.index ? null : q.items[ni];
 	const a = activeEl();
-	const left = trackDuration() - a.currentTime;
-	if (!(left > 0) || left > PRELOAD_LEAD_S) return;
+	const go = shouldPreloadNext({
+		playing: playing.value,
+		paused: a.paused,
+		readyState: a.readyState,
+		remaining: trackDuration() - a.currentTime,
+		hasNext: id !== null,
+		alreadyPreloaded: id !== null && spareId === id,
+	});
+	if (!go || id === null) return;
 	const t = lib.track(id);
 	if (!t) return;
 	const s = spareEl();
@@ -199,7 +203,7 @@ function dropSpare() {
 
 function createAudio(): HTMLAudioElement {
 	const a = new Audio();
-	a.preload = "metadata";
+	a.preload = "none";
 	const mine = () => a === activeEl();
 	a.addEventListener("playing", () => {
 		if (!mine()) return;
@@ -288,7 +292,7 @@ function load(t: Track, autoplay: boolean, at = 0) {
 	} else {
 		if (spareId) dropSpare();
 		const a = activeEl();
-		a.preload = autoplay ? "auto" : "metadata";
+		a.preload = preloadFor(autoplay);
 		a.src = streamUrl(t.file);
 		pendingSeek = at > 0 ? at : null;
 	}
