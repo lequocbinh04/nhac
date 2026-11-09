@@ -2,7 +2,8 @@
 import { signal } from "@preact/signals";
 
 export type AlbumSort = "artist" | "title" | "year";
-export type AlbumFilter = "all" | "hires" | "cd";
+export type AlbumFilter = "all" | "hires" | "cd" | "suspect";
+export type SongFilter = "all" | "lossless" | "suspect";
 
 function persisted<T extends string>(key: string, allowed: readonly T[], fallback: T) {
 	let initial = fallback;
@@ -24,7 +25,8 @@ function persisted<T extends string>(key: string, allowed: readonly T[], fallbac
 }
 
 export const albumSort = persisted<AlbumSort>("nhac.albumSort", ["artist", "title", "year"], "artist");
-export const albumFilter = persisted<AlbumFilter>("nhac.albumFilter", ["all", "hires", "cd"], "all");
+export const albumFilter = persisted<AlbumFilter>("nhac.albumFilter", ["all", "hires", "cd", "suspect"], "all");
+export const songFilter = persisted<SongFilter>("nhac.songFilter", ["all", "lossless", "suspect"], "all");
 
 const mobileQuery = typeof matchMedia === "undefined" ? null : matchMedia("(max-width: 768px)");
 export const isMobile = signal(mobileQuery?.matches ?? false);
@@ -40,8 +42,14 @@ export function reducedMotion(): boolean {
 /** Now Playing sheet (mobile) / overlay (desktop). */
 export const nowPlayingOpen = signal(false);
 
-/** Now Playing shows lyrics instead of the signal panel (when the track has lyrics). */
-export const lyricsView = signal(false);
+/** What Now Playing shows beside the transport: the signal panel, lyrics, or the spectrogram. */
+export type NowPlayingPane = "signal" | "lyrics" | "spectrum";
+export const nowPlayingPane = signal<NowPlayingPane>("signal");
+
+/** Switch to `pane`, or back to the signal panel when it is already shown. */
+export function togglePane(pane: Exclude<NowPlayingPane, "signal">) {
+	nowPlayingPane.value = nowPlayingPane.value === pane ? "signal" : pane;
+}
 
 /** Search text, shared by the desktop top bar field and the mobile search view field. */
 export const searchText = signal("");

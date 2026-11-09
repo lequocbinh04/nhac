@@ -251,6 +251,10 @@
 	margin-right: var(--s-2);
 }
 
+.pb-right .verdict {
+	margin: 0 var(--s-2) 0 calc(-1 * var(--s-1));
+}
+
 .volume {
 	display: flex;
 	align-items: center;
@@ -280,7 +284,8 @@
 		grid-template-columns: minmax(200px, 1fr) minmax(300px, 520px) auto;
 		gap: var(--s-5);
 	}
-	.pb-right .quality {
+	.pb-right .quality,
+	.pb-right .verdict {
 		display: none;
 	}
 }

@@ -647,6 +647,14 @@
 	color: var(--t1);
 }
 
+.stat dt .vdot {
+	vertical-align: 1px;
+}
+
+.settings-note {
+	margin-top: var(--s-3);
+}
+
 .kb {
 	display: grid;
 	gap: var(--s-2);

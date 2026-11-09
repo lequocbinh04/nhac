@@ -6,12 +6,13 @@
 //   GET  /api/library     -> ${NHAC_LIBRARY_DIR:-library-data}/library.json
 //   GET  /cover/<id>.jpg  -> ${NHAC_LIBRARY_DIR:-library-data}/covers/<id>.jpg
 //   GET  /lyrics/<id>     -> ${NHAC_LIBRARY_DIR:-library-data}/lyrics/<id>.lrc (text/plain; 404 when absent)
+//   GET  /spectrum/<id>   -> ${NHAC_LIBRARY_DIR:-library-data}/spectra/<id>.webp, else <id>.png
 //   GET  /stream/<key>    -> ${NHAC_MUSIC_DIR}/<key> with Range (206), HEAD, content types
 //   POST /api/logout      -> { ok: true }
 //   POST /api/login       -> { ok: true } (so the login page also works locally)
 // There is no password gate in this mode. NHAC_LIBRARY_DIR is resolved from the current working
-// directory (the repo root under npm). Without NHAC_MUSIC_DIR, nothing changes: /api, /stream and
-// /cover are proxied to wrangler as configured in vite.config.ts.
+// directory (the repo root under npm). Without NHAC_MUSIC_DIR, nothing changes: /api, /stream,
+// /cover, /lyrics and /spectrum are proxied to wrangler as configured in vite.config.ts.
 import { createReadStream, promises as fs } from "node:fs";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { extname, resolve, sep } from "node:path";
@@ -106,6 +107,16 @@ async function serveFile(req: IncomingMessage, res: ServerResponse, file: string
 	stream.pipe(res);
 }
 
+/** The spectrogram as the scan wrote it: WebP when ffmpeg had libwebp, PNG otherwise. */
+async function serveSpectrum(req: IncomingMessage, res: ServerResponse, dir: string, id: string) {
+	for (const [ext, type] of [["webp", "image/webp"], ["png", "image/png"]] as const) {
+		const file = resolve(dir, `${id}.${ext}`);
+		const found = await fs.stat(file).then((s) => s.isFile(), () => false);
+		if (found) return serveFile(req, res, file, type, "private, max-age=3600");
+	}
+	send(res, 404, "Not found");
+}
+
 export function nhacDevServer(): Plugin {
 	return {
 		name: "nhac-dev-server",
@@ -132,6 +143,11 @@ export function nhacDevServer(): Plugin {
 					const id = path.slice("/lyrics/".length);
 					if (!/^[0-9a-f]{6,32}$/i.test(id)) return send(res, 404, "Not found");
 					return void serveFile(req, res, resolve(libDir, "lyrics", `${id}.lrc`), "text/plain; charset=utf-8", "private, max-age=3600");
+				}
+				if (path.startsWith("/spectrum/") && read) {
+					const id = path.slice("/spectrum/".length);
+					if (!/^[0-9a-f]{12}$/.test(id)) return send(res, 404, "Not found");
+					return void serveSpectrum(req, res, resolve(libDir, "spectra"), id);
 				}
 				if (path.startsWith("/cover/") && read) {
 					const name = path.slice("/cover/".length);

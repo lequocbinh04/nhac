@@ -2,6 +2,8 @@ import { useRef, useState } from "preact/hooks";
 import { Cover } from "../components/Cover";
 import { ArtistLinks, Empty, PlayingBars } from "../components/bits";
 import { Icon } from "../components/icons";
+import { contextMenu } from "../components/Menu";
+import { trackMenuItems } from "../components/menus";
 import { formatTime, trackSpec } from "../lib/format";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
@@ -37,8 +39,13 @@ function QueueRow({
 	const t = dict.value;
 	const c = catalog();
 	const info = c.album.get(track.albumId);
+	const menu = contextMenu(() => ({
+		label: track.title,
+		items: current ? trackMenuItems(c, track) : [...trackMenuItems(c, track), { label: t.remove, onSelect: () => player.removeAt(qi) }],
+	}));
 	const onKeyDown = (e: KeyboardEvent) => {
-		if (!e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
+		menu.onKeyDown(e);
+		if (current || !e.altKey || (e.key !== "ArrowUp" && e.key !== "ArrowDown")) return;
 		e.preventDefault();
 		const q = player.queue.value;
 		const to = qi + (e.key === "ArrowUp" ? -1 : 1);
@@ -54,7 +61,8 @@ function QueueRow({
 			style={{ transform: `translateY(${top}px)` }}
 			aria-posinset={pos}
 			aria-setsize={setSize}
-			onKeyDown={current ? undefined : onKeyDown}
+			onKeyDown={onKeyDown}
+			onContextMenu={menu.onContextMenu}
 		>
 			{onHandleDown ? (
 				<span class="qrow-handle" aria-hidden="true" onPointerDown={(e) => onHandleDown(e, qi)}>
@@ -68,6 +76,7 @@ function QueueRow({
 			<button
 				type="button"
 				class="qrow-hit"
+				data-menu-focus
 				aria-label={`${track.title}, ${track.artist}`}
 				aria-describedby={current ? undefined : "queue-reorder-hint"}
 				aria-current={current ? "true" : undefined}

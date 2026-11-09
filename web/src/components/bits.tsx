@@ -1,7 +1,9 @@
 // Small shared pieces: highlighted text, artist credits, playing indicator, quality readout.
 import type { ComponentChildren } from "preact";
 import { artistSegments } from "../lib/catalog";
+import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
+import { describeQuality } from "../lib/quality";
 import { href } from "../lib/router";
 import { highlightParts, type Span } from "../lib/search";
 import { qualityParts } from "../lib/format";
@@ -76,6 +78,26 @@ export function Quality({ track, live = true }: { track: Pick<Track, "bits" | "s
 			<span class="quality-cell">
 				<span class="quality-num">{q.khz}</span>
 				<span class="quality-unit">kHz</span>
+			</span>
+		</span>
+	);
+}
+
+/**
+ * Authenticity verdict beside the quality readout: "● Lossless", "● Upsampled · 44.1k source",
+ * "● Lossy source · ~16 kHz". Nothing when inconclusive or not analysed. `compact` keeps the label
+ * only (the detail stays in the tooltip and the accessible text).
+ */
+export function Verdict({ track, compact = false }: { track: Pick<Track, "quality" | "sr" | "bits">; compact?: boolean }) {
+	const q = describeQuality(track, dict.value);
+	if (!q || q.verdict === "unknown") return null;
+	return (
+		<span class="verdict" data-v={q.verdict} title={q.why}>
+			<span class="verdict-dot" aria-hidden="true" />
+			<span>{q.label}</span>
+			{q.detail && !compact && <span class="verdict-detail">· {q.detail}</span>}
+			<span class="visually-hidden">
+				{compact && q.detail ? `, ${q.detail}` : ""}. {q.why}
 			</span>
 		</span>
 	);

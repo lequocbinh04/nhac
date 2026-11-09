@@ -1,8 +1,9 @@
 // In-memory indexes over library.json: albums, tracks, derived artists, specs and search entries.
 // Pure: built once after the library loads, never mutated.
 import { summarize, type SpecSummary } from "./format";
+import { isSuspect, qualityCounts } from "./quality";
 import { fold, makeEntry, type Entry } from "./search";
-import type { Album, LibraryData, Track } from "./types";
+import type { Album, LibraryData, QualityVerdict, Track } from "./types";
 
 export interface Artist {
 	key: string;
@@ -20,6 +21,8 @@ export interface AlbumInfo extends SpecSummary {
 	tracks: Track[];
 	/** Artists parsed from the album artist string, in order */
 	artists: Artist[];
+	/** Some track is a confident lossy-source or upsampled call */
+	suspect: boolean;
 }
 
 export type ArtistItem = { kind: "artist"; artist: Artist };
@@ -36,6 +39,8 @@ export interface Catalog {
 	artists: Artist[];
 	artist: Map<string, Artist>;
 	hiResTracks: number;
+	/** Tracks per shown verdict; "none" = not analysed */
+	quality: Record<QualityVerdict | "none", number>;
 	search: { artists: Entry<ArtistItem>[]; albums: Entry<AlbumItem>[]; tracks: Entry<TrackItem>[] };
 }
 
@@ -129,7 +134,7 @@ export function buildCatalog(data: LibraryData): Catalog {
 			keys.push(d.key);
 		}
 		albumArtistKeys.set(a.id, keys);
-		album.set(a.id, { ...summarize(tracks), album: a, tracks, artists: [] });
+		album.set(a.id, { ...summarize(tracks), album: a, tracks, artists: [], suspect: tracks.some(isSuspect) });
 	}
 	let hiResTracks = 0;
 	for (const t of data.tracks) {
@@ -173,6 +178,7 @@ export function buildCatalog(data: LibraryData): Catalog {
 		artists,
 		artist,
 		hiResTracks,
+		quality: qualityCounts(data.tracks),
 		search: {
 			artists: artists.map((a) => makeEntry<ArtistItem>({ kind: "artist", artist: a }, [a.name], 3)),
 			albums: albums.map((a) => makeEntry<AlbumItem>({ kind: "album", album: a }, [a.title, a.artist], 2)),

@@ -17,6 +17,9 @@
 	--acc-soft: rgb(111 194 182 / 0.14);
 	--acc-ink: #06211d;
 	--danger: #e58b7b;
+	/* Calm caution (suspect audio): sand, not alarm red. */
+	--warn: #d8b57e;
+	--warn-soft: rgb(216 181 126 / 0.12);
 
 	--font-sans: "Inter Variable", Inter, system-ui, -apple-system, sans-serif;
 	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;

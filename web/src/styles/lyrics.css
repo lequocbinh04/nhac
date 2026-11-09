@@ -174,22 +174,22 @@ button.lyric {
 	color: var(--t3);
 }
 
-/* Layout of Now Playing while lyrics are shown. */
-.np[data-lyrics] .np-side {
+/* Layout of Now Playing while lyrics or the spectrogram are shown (nowplaying.css styles the latter). */
+.np[data-pane] .np-side {
 	display: flex;
 	flex-direction: column;
 }
 
-.np[data-lyrics] .np-titles {
+.np[data-pane] .np-titles {
 	order: 1;
 }
-.np[data-lyrics] .np-seek {
+.np[data-pane] .np-seek {
 	order: 3;
 }
-.np[data-lyrics] .transport-lg {
+.np[data-pane] .transport-lg {
 	order: 4;
 }
-.np[data-lyrics] .lyrics {
+.np[data-pane] .lyrics {
 	margin-top: var(--s-5);
 }
 
@@ -198,24 +198,24 @@ button.lyric {
 }
 
 @media (max-width: 768px) {
-	.np[data-lyrics] .np-scroll {
+	.np[data-pane] .np-scroll {
 		display: flex;
 		flex-direction: column;
 		overflow: hidden;
 	}
-	.np[data-lyrics] .np-body {
+	.np[data-pane] .np-body {
 		flex: 1;
 		min-height: 0;
 		width: 100%;
 	}
-	.np[data-lyrics] .np-art,
-	.np[data-lyrics] .np-titles {
+	.np[data-pane] .np-art,
+	.np[data-pane] .np-titles {
 		display: none;
 	}
-	.np[data-lyrics] .np-side {
+	.np[data-pane] .np-side {
 		height: 100%;
 	}
-	.np[data-lyrics] .np-compact {
+	.np[data-pane] .np-compact {
 		order: 0;
 		display: flex;
 		align-items: center;
@@ -249,16 +249,16 @@ button.lyric {
 		overflow: hidden;
 		text-overflow: ellipsis;
 	}
-	.np[data-lyrics] .lyrics {
+	.np[data-pane] .lyrics {
 		flex: 1;
 		height: auto;
 		max-height: none;
 		margin-top: var(--s-3);
 	}
-	.np[data-lyrics] .np-seek {
+	.np[data-pane] .np-seek {
 		margin-top: var(--s-3);
 	}
-	.np[data-lyrics] .transport-lg {
+	.np[data-pane] .transport-lg {
 		margin-top: var(--s-2);
 	}
 	.lyric {
@@ -274,7 +274,7 @@ button.lyric {
 
 @media (min-width: 769px) {
 	.np-head {
-		grid-template-columns: 132px minmax(0, 1fr) 132px;
+		grid-template-columns: 176px minmax(0, 1fr) 176px;
 	}
 	.lyric {
 		font-size: 30px;

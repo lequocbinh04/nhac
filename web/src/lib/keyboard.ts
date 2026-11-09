@@ -1,7 +1,7 @@
 // Global shortcuts. Nothing here animates: keyboard actions must feel instant.
 import * as player from "./player";
 import { href, nav, navigate } from "./router";
-import { focusSearch, isMobile, lyricsView, nowPlayingOpen } from "./ui";
+import { focusSearch, isMobile, nowPlayingOpen, togglePane } from "./ui";
 
 function typing(target: EventTarget | null): boolean {
 	if (!(target instanceof HTMLElement)) return false;
@@ -55,7 +55,11 @@ export function installShortcuts() {
 				break;
 			case "l":
 			case "L":
-				if (nowPlayingOpen.value && player.current.value?.lyrics) lyricsView.value = !lyricsView.value;
+				if (nowPlayingOpen.value && player.current.value?.lyrics) togglePane("lyrics");
+				break;
+			case "s":
+			case "S":
+				if (nowPlayingOpen.value && player.current.value?.spectrum) togglePane("spectrum");
 				break;
 			case "/":
 				e.preventDefault();

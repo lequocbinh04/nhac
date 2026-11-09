@@ -36,6 +36,8 @@ const vi = {
 	filterHiRes: "Hi-Res 24-bit",
 	filterCd: "CD 16/44.1",
 	filterLabel: "Lọc theo chất lượng",
+	filterSuspect: "Nghi giả",
+	filterLossless: "Lossless thật",
 	sortLabel: "Sắp xếp",
 	sortArtist: "Nghệ sĩ",
 	sortTitle: "Tên album",
@@ -86,6 +88,25 @@ const vi = {
 	lyricsError: "Không tải được lời bài hát",
 	lyricsBack: "Về dòng đang hát",
 	instrumental: "Đoạn nhạc không lời",
+
+	spectrum: "Phổ tần",
+	spectrumAlt: (top: string, why: string) => `Phổ tần cả bài, từ 0 đến ${top} kHz. ${why}`,
+	spectrumError: "Không tải được phổ tần",
+	spectrumSeek: "Nhấn vào phổ tần để tua",
+	qLossless: "Lossless",
+	qUpsampled: "Nâng mẫu",
+	qLossy: "Nguồn nén",
+	qUnknown: "Chưa rõ",
+	qNotAnalysed: "Chưa phân tích",
+	qSourceOf: (s: string) => `nguồn ${s}`,
+	qWhyLossless: (khz: string) => `Năng lượng tới ${khz} kHz, không có vết cắt → lossless thật`,
+	qWhyLosslessBits: "Không có dấu hiệu nén hay nâng mẫu → lossless thật",
+	qWhyLossy: (khz: string, src: string) => `Cắt gắt ở ${khz} kHz → nguồn ${src}`,
+	qWhyUpRate: (khz: string, fileKhz: string, src: string) => `Không có gì trên ${khz} kHz dù tệp ${fileKhz} kHz → nguồn ${src}`,
+	qWhyUpBits: (bits: number, src: string) => `Tệp ${bits}-bit nhưng các bit thấp trống → nguồn ${src}`,
+	qWhyUnknown: (khz: string | null) => (khz ? `Năng lượng tới ${khz} kHz, chưa đủ chắc để kết luận` : "Chưa đủ tín hiệu để kết luận"),
+	qualityTitle: "Độ thật lossless",
+	qualityNote: "Phân tích phổ tần lúc quét thư viện. Chỉ gắn nhãn khi đủ chắc.",
 
 	moreFrom: (a: string) => `Thêm từ ${a}`,
 	viewArtist: "Xem nghệ sĩ",
@@ -139,6 +160,7 @@ const vi = {
 	notFound: "Không tìm thấy trang này",
 	notFoundBody: "Album hoặc nghệ sĩ này không còn trong thư viện.",
 	noResultsFilter: "Không có album nào khớp bộ lọc",
+	noSongsFilter: "Không có bài nào khớp bộ lọc",
 
 	playFailed: (t: string) => `Không phát được “${t}”, chuyển bài`,
 	playStopped: "Không phát được. Kiểm tra kết nối rồi thử lại.",
@@ -165,6 +187,7 @@ const vi = {
 	kbMute: "Tắt tiếng",
 	kbSearch: "Tìm kiếm",
 	kbLyrics: "Lời bài hát (trong màn Đang phát)",
+	kbSpectrum: "Phổ tần (trong màn Đang phát)",
 	account: "Phiên đăng nhập",
 	logout: "Đăng xuất",
 	about: "Giới thiệu",
@@ -209,6 +232,8 @@ const en: Dict = {
 	filterHiRes: "Hi-Res 24-bit",
 	filterCd: "CD 16/44.1",
 	filterLabel: "Filter by quality",
+	filterSuspect: "Suspect",
+	filterLossless: "Genuine lossless",
 	sortLabel: "Sort",
 	sortArtist: "Artist",
 	sortTitle: "Title",
@@ -259,6 +284,25 @@ const en: Dict = {
 	lyricsError: "Couldn't load lyrics",
 	lyricsBack: "Back to current line",
 	instrumental: "Instrumental",
+
+	spectrum: "Spectrogram",
+	spectrumAlt: (top, why) => `Spectrogram of the whole song, 0 to ${top} kHz. ${why}`,
+	spectrumError: "Couldn't load the spectrogram",
+	spectrumSeek: "Click the spectrogram to seek",
+	qLossless: "Lossless",
+	qUpsampled: "Upsampled",
+	qLossy: "Lossy source",
+	qUnknown: "Inconclusive",
+	qNotAnalysed: "Not analysed",
+	qSourceOf: (s) => `${s} source`,
+	qWhyLossless: (khz) => `Energy up to ${khz} kHz with no cutoff → genuine lossless`,
+	qWhyLosslessBits: "No sign of lossy encoding or upsampling → genuine lossless",
+	qWhyLossy: (khz, src) => `Brickwall at ${khz} kHz → ${src} source`,
+	qWhyUpRate: (khz, fileKhz, src) => `Nothing above ${khz} kHz in a ${fileKhz} kHz file → ${src} source`,
+	qWhyUpBits: (bits, src) => `${bits}-bit file with empty low bits → ${src} source`,
+	qWhyUnknown: (khz) => (khz ? `Energy up to ${khz} kHz, not enough to call it` : "Not enough signal to judge"),
+	qualityTitle: "Lossless authenticity",
+	qualityNote: "Spectrum analysis at library scan time. Tracks are only labelled when the call is confident.",
 
 	moreFrom: (a) => `More from ${a}`,
 	viewArtist: "View artist",
@@ -312,6 +356,7 @@ const en: Dict = {
 	notFound: "Page not found",
 	notFoundBody: "This album or artist is no longer in the library.",
 	noResultsFilter: "No albums match this filter",
+	noSongsFilter: "No songs match this filter",
 
 	playFailed: (t) => `Couldn't play “${t}”, skipping`,
 	playStopped: "Playback failed. Check your connection and try again.",
@@ -338,6 +383,7 @@ const en: Dict = {
 	kbMute: "Mute",
 	kbSearch: "Search",
 	kbLyrics: "Lyrics (in Now Playing)",
+	kbSpectrum: "Spectrogram (in Now Playing)",
 	account: "Session",
 	logout: "Sign out",
 	about: "About",
@@ -373,7 +419,7 @@ function browserLang(): Lang {
 export const langPref = signal<LangPref>(readPref());
 export const lang = computed<Lang>(() => (langPref.value === "auto" ? browserLang() : langPref.value));
 export const locale = computed(() => (lang.value === "vi" ? "vi-VN" : "en-US"));
-const dicts: Record<Lang, Dict> = { vi, en };
+export const dicts: Record<Lang, Dict> = { vi, en };
 export const dict = computed(() => dicts[lang.value]);
 
 export function setLangPref(p: LangPref) {

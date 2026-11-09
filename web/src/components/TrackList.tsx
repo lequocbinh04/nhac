@@ -1,48 +1,20 @@
 // Track rows for albums, artists, songs and search. Lists over 50 rows are virtualized.
 import { useRef } from "preact/hooks";
-import type { Catalog } from "../lib/catalog";
 import { formatTime, trackSpec } from "../lib/format";
+import { describeQuality } from "../lib/quality";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
 import * as player from "../lib/player";
-import { href, navigate } from "../lib/router";
 import type { Span } from "../lib/search";
-import { shareLink, usesNativeShare } from "../lib/share";
-import { toast } from "../lib/toast";
 import type { Track } from "../lib/types";
 import { useVirtual } from "../lib/virtual";
 import { Cover } from "./Cover";
 import { ArtistLinks, Highlight, PlayingBars } from "./bits";
 import { Icon } from "./icons";
-import { openMenu, type MenuItem } from "./Menu";
+import { contextMenu, openMenu } from "./Menu";
+import { trackMenuItems } from "./menus";
 
 export const VIRTUALIZE_OVER = 50;
-
-export function trackMenuItems(c: Catalog, t: Track): MenuItem[] {
-	const d = dict.value;
-	const info = c.album.get(t.albumId);
-	const items: MenuItem[] = [
-		{
-			label: d.playNext,
-			onSelect: () => {
-				player.playNext([t.id]);
-				toast(d.addedNext(t.title));
-			},
-		},
-		{
-			label: d.addToQueue,
-			onSelect: () => {
-				player.addToQueue([t.id]);
-				toast(d.addedQueue(t.title));
-			},
-		},
-	];
-	if (info) items.push({ label: d.goToAlbum, onSelect: () => navigate(href.album(info.album.id)) });
-	const first = info?.artists[0];
-	if (first) items.push({ label: d.goToArtist, onSelect: () => navigate(href.artist(first.key)) });
-	items.push({ label: usesNativeShare() ? d.share : d.copyLink, onSelect: () => void shareLink(href.track(t.id), `${t.title} · ${t.artist}`) });
-	return items;
-}
 
 interface Props {
 	tracks: Track[];
@@ -96,7 +68,9 @@ function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSiz
 	const album = c.album.get(t.albumId);
 	const s = spans?.get(t.id);
 	const showArtist = variant === "list" || (albumArtist !== undefined && t.artist !== albumArtist);
-	const label = `${t.title}, ${t.artist}, ${formatTime(t.dur)}`;
+	const q = describeQuality(t, d);
+	const verdict = q && q.verdict !== "unknown" ? q : null;
+	const label = `${t.title}, ${t.artist}, ${formatTime(t.dur)}${verdict ? `, ${verdict.label}${verdict.detail ? ` ${verdict.detail}` : ""}` : ""}`;
 	return (
 		<li
 			class="trow"
@@ -106,8 +80,9 @@ function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSiz
 			style={top !== undefined ? { transform: `translateY(${top}px)` } : undefined}
 			aria-posinset={setSize ? index + 1 : undefined}
 			aria-setsize={setSize}
+			{...contextMenu(() => ({ label: t.title, items: trackMenuItems(c, t) }))}
 		>
-			<button type="button" class="trow-hit" aria-label={label} aria-current={isCurrent ? "true" : undefined} onClick={() => onPlay(index)} />
+			<button type="button" class="trow-hit" data-menu-focus aria-label={label} aria-current={isCurrent ? "true" : undefined} onClick={() => onPlay(index)} />
 			{variant === "album" ? (
 				<span class="trow-lead mono" aria-hidden="true">
 					{isCurrent ? <PlayingBars active={isPlaying} /> : <span class="trow-n">{t.n || index + 1}</span>}
@@ -144,8 +119,12 @@ function Row({ track: t, index, onPlay, variant, albumArtist, spans, top, setSiz
 					{album && <Highlight text={album.album.title} spans={s?.[2]} />}
 				</span>
 			)}
-			<span class="trow-spec mono" aria-hidden="true">
-				{trackSpec(t)}
+			<span class="trow-spec mono" aria-hidden="true" data-v={verdict?.verdict}>
+				<span class="trow-spec-line">
+					{verdict && <i class="vdot" />}
+					{trackSpec(t)}
+				</span>
+				{verdict && verdict.verdict !== "lossless" && <span class="trow-flag">{verdict.label}</span>}
 			</span>
 			<span class="trow-dur mono" aria-hidden="true">
 				{formatTime(t.dur)}

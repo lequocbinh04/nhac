@@ -2,16 +2,15 @@ import type { ComponentChildren } from "preact";
 import { Cover } from "../components/Cover";
 import { ArtistLinks, Empty } from "../components/bits";
 import { Icon } from "../components/icons";
-import { openMenu } from "../components/Menu";
+import { contextMenu, openMenu } from "../components/Menu";
+import { albumMenuItems } from "../components/menus";
 import { TrackList } from "../components/TrackList";
 import type { AlbumInfo } from "../lib/catalog";
 import { formatTime } from "../lib/format";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
 import * as player from "../lib/player";
-import { href, navigate } from "../lib/router";
-import { shareLink, usesNativeShare } from "../lib/share";
-import { toast } from "../lib/toast";
+import { href } from "../lib/router";
 
 function MoreFrom({ info }: { info: AlbumInfo }) {
 	const t = dict.value;
@@ -66,7 +65,7 @@ export function AlbumView({ id, focusTrackId, banner }: { id: string; focusTrack
 	return (
 		<div class="page album-page">
 			{banner}
-			<section class="album-side">
+			<section class="album-side" {...contextMenu(() => ({ label: a.title, items: albumMenuItems(info) }))}>
 				<Cover albumId={a.id} hasCover={a.cover} size={384} class="album-cover" eager alt={a.title} />
 				<h1 class="album-title" tabIndex={-1}>
 					{a.title}
@@ -97,29 +96,11 @@ export function AlbumView({ id, focusTrackId, banner }: { id: string; focusTrack
 					<button
 						type="button"
 						class="btn btn-round"
+						data-menu-focus
 						aria-label={`${t.more}: ${a.title}`}
 						aria-haspopup="menu"
 						aria-expanded="false"
-						onClick={(e) =>
-							openMenu(e, a.title, [
-								{
-									label: t.playNext,
-									onSelect: () => {
-										player.playNext(ids);
-										toast(t.addedNext(a.title));
-									},
-								},
-								{
-									label: t.addToQueue,
-									onSelect: () => {
-										player.addToQueue(ids);
-										toast(t.addedQueue(a.title));
-									},
-								},
-								...(info.artists[0] ? [{ label: t.goToArtist, onSelect: () => navigate(href.artist(info.artists[0].key)) }] : []),
-								{ label: usesNativeShare() ? t.share : t.copyLink, onSelect: () => void shareLink(href.album(a.id), `${a.title} · ${a.artist}`) },
-							])
-						}
+						onClick={(e) => openMenu(e, a.title, albumMenuItems(info))}
 					>
 						<Icon name="dotsThree" size={20} />
 					</button>

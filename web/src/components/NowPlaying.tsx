@@ -11,19 +11,24 @@ import { meterBroken, meterSupport, outputRate } from "../lib/meter";
 import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
 import { shareLink, usesNativeShare } from "../lib/share";
-import { lyricsView, nowPlayingOpen } from "../lib/ui";
+import { nowPlayingOpen, nowPlayingPane, togglePane } from "../lib/ui";
 import { Cover } from "./Cover";
-import { ArtistLinks, Quality } from "./bits";
+import { ArtistLinks, Quality, Verdict } from "./bits";
 import { Icon } from "./icons";
 import { LyricsPane } from "./Lyrics";
 import { openMenu } from "./Menu";
+import { currentTrackMenu } from "./menus";
 import { LevelMeter } from "./Meter";
 import { Seekbar } from "./Seekbar";
+import { SpectrumPane } from "./Spectrum";
 import { Time, Transport } from "./Transport";
 
 const FLICK_PX_PER_MS = 0.11;
 const PULL_FRACTION = 0.25;
 const DRAG_SLOP = 8;
+
+/** Right click on the artwork or titles: the track's menu; focus returns to the title. */
+const trackMenu = currentTrackMenu(() => document.querySelector<HTMLElement>(".np-title"));
 
 /** Honest path: what we know about the source, the decode, and that the browser owns the output. */
 function SignalPath({ track }: { track: Track }) {
@@ -89,7 +94,8 @@ export function NowPlaying() {
 	const info = tr ? c.album.get(tr.albumId) : undefined;
 	const native = usesNativeShare();
 	const hasLyrics = !!tr?.lyrics && lyrics.value.status !== "none";
-	const showLyrics = hasLyrics && lyricsView.value;
+	const want = nowPlayingPane.value;
+	const pane = want === "lyrics" && hasLyrics ? "lyrics" : want === "spectrum" && tr?.spectrum ? "spectrum" : "signal";
 	const sheet = useRef<HTMLDivElement>(null);
 	const scroller = useRef<HTMLDivElement>(null);
 	const closeBtn = useRef<HTMLButtonElement>(null);
@@ -140,7 +146,7 @@ export function NowPlaying() {
 		const onDown = (e: PointerEvent) => {
 			// Ignore extra fingers once a drag is tracked (multi-touch protection).
 			if (id !== null || !nowPlayingOpen.value || e.button !== 0) return;
-			if ((e.target as Element).closest(".seek, input, .menu, .lyrics")) return;
+			if ((e.target as Element).closest(".seek, input, .menu, .lyrics, .spec-frame")) return;
 			if (e.pointerType === "mouse" && !(e.target as Element).closest(".np-head")) return;
 			id = e.pointerId;
 			startY = e.clientY;
@@ -218,7 +224,7 @@ export function NowPlaying() {
 			ref={sheet}
 			class="np"
 			data-open={open ? "" : undefined}
-			data-lyrics={showLyrics ? "" : undefined}
+			data-pane={pane === "signal" ? undefined : pane}
 			role="dialog"
 			aria-modal="true"
 			aria-label={t.nowPlaying}
@@ -233,8 +239,13 @@ export function NowPlaying() {
 					<span class="np-context">{info?.album.title ?? t.nowPlaying}</span>
 					<span class="np-head-actions">
 						{hasLyrics && (
-							<button type="button" class="icon-btn toggle" aria-label={t.lyrics} aria-pressed={showLyrics} onClick={() => (lyricsView.value = !lyricsView.value)}>
+							<button type="button" class="icon-btn toggle" aria-label={t.lyrics} aria-pressed={pane === "lyrics"} onClick={() => togglePane("lyrics")}>
 								<Icon name="quotes" size={22} />
+							</button>
+						)}
+						{tr?.spectrum && (
+							<button type="button" class="icon-btn toggle" aria-label={t.spectrum} aria-pressed={pane === "spectrum"} onClick={() => togglePane("spectrum")}>
+								<Icon name="equalizer" size={22} />
 							</button>
 						)}
 						<button type="button" class="icon-btn" aria-label={native ? t.share : t.copyLink} disabled={!tr} onClick={onShare}>
@@ -256,11 +267,11 @@ export function NowPlaying() {
 				</header>
 				{tr && (
 					<div class="np-body">
-						<div class="np-art">
+						<div class="np-art" {...trackMenu}>
 							<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={480} eager alt={info?.album.title ?? ""} />
 						</div>
 						<div class="np-side">
-							{showLyrics && (
+							{pane !== "signal" && (
 								<div class="np-compact" aria-hidden="true">
 									<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={48} eager />
 									<span class="np-compact-text">
@@ -269,12 +280,17 @@ export function NowPlaying() {
 									</span>
 								</div>
 							)}
-							<div class="np-titles">
-								<h2 class="np-title">{tr.title}</h2>
+							<div class="np-titles" {...trackMenu}>
+								<h2 class="np-title" tabIndex={-1}>
+									{tr.title}
+								</h2>
 								<span class="np-artist">
 									<ArtistLinks text={tr.artist} onNavigate={close} />
 								</span>
-								<Quality track={tr} />
+								<span class="np-quality">
+									<Quality track={tr} />
+									<Verdict track={tr} />
+								</span>
 							</div>
 							<div class="np-seek">
 								<Seekbar variant="large" />
@@ -283,9 +299,10 @@ export function NowPlaying() {
 									<Time mode="remaining" />
 								</div>
 							</div>
-							{showLyrics && <LyricsPane active={open} />}
+							{pane === "lyrics" && <LyricsPane active={open} />}
+							{pane === "spectrum" && <SpectrumPane key={tr.id} track={tr} active={open} />}
 							<Transport size="lg" />
-							{!showLyrics && (
+							{pane === "signal" && (
 								<section class="np-panel" aria-label={t.signalPath}>
 									{meterSupport === "on" && !meterBroken.value && <LevelMeter active={open} />}
 									<SignalPath track={tr} />

@@ -20,6 +20,7 @@ Stream your own FLAC, ALAC and WAV files at full resolution, up to 24-bit / 192 
 - **Bit-exact playback.** Files are served as stored, with Range support for instant seeking. The quality readout shows the real codec, bit depth and sample rate of every track (`FLAC │ 24 bit │ 192 kHz`).
 - **R2 or any S3 bucket.** Use an R2 binding, or AWS S3, Backblaze B2, Wasabi, MinIO, R2's S3 API… through signed requests. Nested folders are fine.
 - **Waveform seek bar.** Every track gets a real loudness waveform computed once when you index your library.
+- **Is it really lossless?** The indexer draws a spectrogram of every track and flags files that are lossy or upsampled underneath their lossless container (an MP3 re-saved as FLAC, a CD rip padded to 24/96). See [how the check works](#is-it-really-lossless) and where it can be wrong.
 - **Stereo level meter.** Live L/R levels with peak hold on the Now Playing screen, read from the actual decoded signal (disabled on iOS, where WebKit would cut audio in the background).
 - **Honest signal path.** Source → lossless decode → browser output, including the output sample rate the browser actually uses. No "bit-perfect" marketing.
 - **Gapless-ish transitions.** The next track is buffered shortly before the current one ends and swapped in on `ended`.
@@ -54,7 +55,7 @@ Stream your own FLAC, ALAC and WAV files at full resolution, up to 24-bit / 192 
 ```mermaid
 flowchart LR
   subgraph you["Your machine (once per library change)"]
-    M[Music folder] --> B["tools/build_library.py<br/>tags · albums · covers · waveforms"]
+    M[Music folder] --> B["tools/build_library.py<br/>tags · albums · covers · waveforms · spectrograms"]
   end
   B -- "library.json + covers/" --> S
   M -- "audio files" --> S[("R2 bucket<br/>or S3-compatible")]
@@ -62,11 +63,11 @@ flowchart LR
     W["Worker<br/>password gate · sessions · Range"] --> S
     A["Static web app<br/>(Workers assets)"]
   end
-  P["Browser / phone"] -- "/api/library · /cover · /stream (206)" --> W
+  P["Browser / phone"] -- "/api/library · /cover · /spectrum · /stream (206)" --> W
   P --> A
 ```
 
-The bucket holds your music as-is, plus a small index under a prefix (`_nhac/` by default) that the indexer produces: `library.json` (tracks, albums, formats, waveforms) and one 512 px JPEG per album cover. The Worker never scans the bucket; it reads the index and streams objects.
+The bucket holds your music as-is, plus a small index under a prefix (`_nhac/` by default) that the indexer produces: `library.json` (tracks, albums, formats, waveforms, quality verdicts), one 512 px JPEG per album cover, lyrics, and one spectrogram picture per track. The Worker never scans the bucket; it reads the index and streams objects.
 
 ## Deploy
 
@@ -90,10 +91,10 @@ The bucket holds your music as-is, plus a small index under a prefix (`_nhac/` b
 
    ```sh
    python3 tools/build_library.py ~/Music --out library-data
-   rclone copy library-data r2:music/_nhac --exclude peaks-cache.json
+   rclone copy library-data r2:music/_nhac --exclude peaks-cache.json --exclude quality-cache.json
    ```
 
-   Re-run both commands whenever you add music; waveforms are cached, so re-indexing is quick.
+   Re-run both commands whenever you add music; waveforms and spectrograms are cached, so re-indexing is quick.
 
 4. **Set your password and deploy**
 
@@ -123,7 +124,7 @@ A read-only key scoped to the bucket is enough.
 | `APP_PASSWORD` | secret | | The password for the login screen. |
 | `SESSION_SECRET` | secret | | Signs session cookies. Changing it signs everyone out. |
 | `STORAGE` | var | `r2` | `r2` uses the `MUSIC` bucket binding; `s3` uses the S3 settings below. |
-| `LIBRARY_PREFIX` | var | `_nhac/` | Where `library.json` and `covers/` live in the bucket. |
+| `LIBRARY_PREFIX` | var | `_nhac/` | Where `library.json`, `covers/`, `lyrics/` and `spectra/` live in the bucket. |
 | `S3_ENDPOINT`, `S3_BUCKET`, `S3_REGION` | var | | S3 mode only. |
 | `S3_ACCESS_KEY_ID`, `S3_SECRET_ACCESS_KEY` | secret | | S3 mode only. |
 | `MUSIC` | R2 binding | `music` | R2 mode only. |
@@ -150,6 +151,27 @@ ffmpeg -i song.flac -map 0:a -f md5 -
 
 **Tip:** for the snappiest seeking, give FLAC files a seek table (`metaflac --add-seekpoint=10s *.flac`). Without one, browsers have to bisect the file with several Range requests to find a position.
 
+## Is it really lossless?
+
+A FLAC file can hold anything, including an MP3 that someone decoded and saved again, or a 16-bit CD rip resampled to 24/96 to look like hi-res. Neither gains any quality, and both are common in downloaded collections. `tools/build_library.py` checks every track (the details live in `tools/quality.py`) and the app shows a spectrogram plus a verdict:
+
+| Verdict | What the indexer saw |
+| --- | --- |
+| `lossless` | Content up to at least 20.9 kHz (or a gentle natural roll-off ending above 19.5 kHz), and for hi-res files real content above the 44.1/48 kHz band and real low-order bits. |
+| `lossy` | A lossy encoder's fingerprint: a brick-wall low-pass below 20.9 kHz with only noise floor above it (about 16 kHz for MP3 128k, 18 kHz for AAC 128k, 20-20.5 kHz for MP3 320k and Opus), or the step and flicker MP3 leaves at its top band (16 kHz at 44.1 kHz) when it was encoded without a low-pass. Files in a lossy codec are always `lossy`. |
+| `upsampled` | Lossless but not what the label says: an 88.2 kHz or higher file with nothing above ~22-24 kHz (`source` 44.1k / 48k), or whose top half is a mirror image of the music below 22.05 / 24 kHz (an upsampler without an anti-imaging filter), or a 24-bit file whose samples only use 16 bits. |
+| `unknown` | Too short, too quiet, not decodable, or not clear-cut, such as an old master that rolls off gently below 19.5 kHz. |
+
+How it works: one ffmpeg pass per file renders a spectrogram averaged over the whole track (Blackman-Harris window, 150 dB range), and 24-bit files also go through `astats` for the bits in use. For each frequency the indexer measures the average level and how much it moves over time: music moves with the song, while the empty band above a lossy encoder's low-pass, a resampler's stop band, or a dither shelf stays flat. A lossy or upsampled verdict needs a confidence of 0.7 or more; anything weaker stays `unknown`, so the app never accuses a file on thin evidence. Each track in `library.json` carries `quality: { verdict, cutoffHz, effectiveBits?, source?, confidence }`, `stats.quality` counts the verdicts, and the picture (1200×400, time left to right, 0 Hz at the bottom to half the sample rate at the top) is served at `/spectrum/<trackId>` behind the session from `<LIBRARY_PREFIX>spectra/<trackId>.webp`, or `.png` when your ffmpeg lacks libwebp.
+
+Limits, honestly:
+
+- **High-bitrate AAC is invisible.** AAC at 256 kbit/s keeps everything up to about 22 kHz and leaves no top-band step, so an AAC 256k transcode reads `lossless`. The same goes for any lossy source whose own cutoff was above 20.9 kHz.
+- **A steep mastering filter can look like MP3 320k.** Some masters are low-passed at 20-20.5 kHz, exactly where LAME at 320 kbit/s cuts. These get `lossy` at confidence 0.8 rather than 0.95: look at the spectrogram before deleting anything.
+- **Bit depth is only caught when nothing touched the samples.** A 16-bit source with any gain change or dither on its way to 24 bits uses all 24 bits and is not flagged.
+- **Hi-res made from a CD master and then processed passes.** If a 44.1/48 kHz master is upsampled and then limited, equalised or given added noise at the high rate, faint content appears above 24 kHz and the file reads `lossless`. The spectrogram shows it: the music ends near 22 kHz with only a dim haze above.
+- Run `python3 tools/quality.py FILE…` to see the measured numbers (edge, wall, step) behind a verdict.
+
 ## Develop
 
 ```sh
@@ -171,7 +193,7 @@ python3 tools/build_library.py demo-music --out demo-library-data
 NHAC_MUSIC_DIR=demo-music NHAC_LIBRARY_DIR=demo-library-data npm run dev:web
 ```
 
-The demo music is synthesized with ffmpeg and the covers in `tools/demo/covers/` are original generated artwork, so the demo is free to use anywhere.
+The demo music is synthesized with ffmpeg and the covers in `tools/demo/covers/` are original generated artwork, so the demo is free to use anywhere. Two demo tracks are deliberately fake so every verdict shows up: "Hiên Nhà Ai" went through MP3 128k before being saved as FLAC, and "Afterimage" was rendered at 16-bit/44.1 kHz and resampled to 24/96.
 
 ### Project layout
 
@@ -179,7 +201,7 @@ The demo music is synthesized with ffmpeg and the covers in `tools/demo/covers/`
 src/            Worker: auth, sessions, routing (index.ts) and R2/S3 streaming (storage.ts)
 web/            Preact app (index.html) and the login page (login.html), built into public/
 web/src/lib/    player engine, queue, search, catalog, meter, i18n (framework-free, unit-tested)
-tools/          build_library.py (indexer) and make_demo_library.py (demo generator)
+tools/          build_library.py (indexer), quality.py (spectrogram and authenticity check) and make_demo_library.py (demo generator)
 test/           Worker tests with the Cloudflare Vitest integration
 ```
 

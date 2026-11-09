@@ -16,6 +16,7 @@ function sortAlbums(c: Catalog, sort: AlbumSort, filter: AlbumFilter): AlbumInfo
 		if (!info) continue;
 		if (filter === "hires" && !info.hiRes) continue;
 		if (filter === "cd" && !info.cd) continue;
+		if (filter === "suspect" && !info.suspect) continue;
 		list.push(info);
 	}
 	const byTitle = (x: AlbumInfo, y: AlbumInfo) => compareText(x.album.title, y.album.title);
@@ -32,7 +33,9 @@ export function AlbumsView() {
 	const t = dict.value;
 	const c = catalog();
 	const sort = albumSort.value;
-	const filter = albumFilter.value;
+	// The suspect chip only exists once the library has been analysed.
+	const analysed = c.quality.none < c.tracks.length;
+	const filter = albumFilter.value === "suspect" && !analysed ? "all" : albumFilter.value;
 	const albums = useMemo(() => sortAlbums(c, sort, filter), [c, sort, filter]);
 	const sortLabel = sort === "title" ? t.sortTitle : sort === "year" ? t.sortYear : t.sortArtist;
 	const filters: [AlbumFilter, string][] = [
@@ -40,6 +43,7 @@ export function AlbumsView() {
 		["hires", t.filterHiRes],
 		["cd", t.filterCd],
 	];
+	if (analysed) filters.push(["suspect", t.filterSuspect]);
 
 	return (
 		<div class="page">

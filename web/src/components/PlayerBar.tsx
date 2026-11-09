@@ -7,13 +7,16 @@ import { isAppleMobile } from "../lib/meter";
 import * as player from "../lib/player";
 import { href, nav } from "../lib/router";
 import { onFrame } from "../lib/ticker";
-import { lyricsView, nowPlayingOpen } from "../lib/ui";
+import { nowPlayingOpen, nowPlayingPane } from "../lib/ui";
 import { trackSpec } from "../lib/format";
 import { Cover } from "./Cover";
-import { ArtistLinks, Quality } from "./bits";
+import { ArtistLinks, Quality, Verdict } from "./bits";
 import { Icon } from "./icons";
+import { currentTrackMenu } from "./menus";
 import { Seekbar } from "./Seekbar";
 import { PlayButton, Time, Transport } from "./Transport";
+
+const trackMenu = currentTrackMenu();
 
 /** Volume is read-only on iOS, so the control is hidden there. */
 const volumeSettable = !isAppleMobile();
@@ -60,7 +63,7 @@ function LyricsButton({ size }: { size: number }) {
 			class="icon-btn"
 			aria-label={t.showLyrics}
 			onClick={(e) => {
-				lyricsView.value = true;
+				nowPlayingPane.value = "lyrics";
 				openNowPlaying(e);
 			}}
 		>
@@ -77,10 +80,10 @@ export function PlayerBar() {
 	const onQueue = nav.value.route.name === "queue";
 	return (
 		<footer class="playerbar" aria-label={t.nowPlaying}>
-			<div class="pb-left">
+			<div class="pb-left" {...trackMenu}>
 				{tr ? (
 					<>
-						<button type="button" class="pb-cover" aria-label={t.openNowPlaying} onClick={openNowPlaying}>
+						<button type="button" class="pb-cover" data-menu-focus aria-label={t.openNowPlaying} onClick={openNowPlaying}>
 							<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={56} eager />
 						</button>
 						<div class="pb-meta">
@@ -109,6 +112,7 @@ export function PlayerBar() {
 			</div>
 			<div class="pb-right">
 				{tr && <Quality track={tr} />}
+				{tr && <Verdict track={tr} compact />}
 				<LyricsButton size={20} />
 				<a
 					href={href.queue()}
@@ -161,7 +165,7 @@ export function MiniPlayer() {
 	const info = catalog().album.get(tr.albumId);
 	return (
 		<div class="mini">
-			<button type="button" class="mini-open" aria-label={`${t.openNowPlaying}: ${tr.title}`} onClick={openNowPlaying}>
+			<button type="button" class="mini-open" aria-label={`${t.openNowPlaying}: ${tr.title}`} onClick={openNowPlaying} {...trackMenu}>
 				<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={44} eager />
 				<span class="mini-meta">
 					<span class="mini-title">{tr.title}</span>

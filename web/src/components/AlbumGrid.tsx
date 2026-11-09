@@ -11,6 +11,8 @@ import { useVirtual } from "../lib/virtual";
 import { Cover } from "./Cover";
 import { Highlight, PlayingBars } from "./bits";
 import { Icon } from "./icons";
+import { contextMenu } from "./Menu";
+import { albumMenuItems } from "./menus";
 import { VIRTUALIZE_OVER } from "./TrackList";
 
 /** Card text block: 12px gap + two 21px title lines + 2px + one 20px subtitle line. */
@@ -23,8 +25,8 @@ export function AlbumCard({ info, spans, eager }: { info: AlbumInfo; spans?: Spa
 	const isCurrent = cur?.albumId === a.id;
 	const spec = shortSpec(info);
 	return (
-		<div class="card" data-current={isCurrent ? "" : undefined}>
-			<a class="card-link" href={href.album(a.id)}>
+		<div class="card" data-current={isCurrent ? "" : undefined} {...contextMenu(() => ({ label: a.title, items: albumMenuItems(info) }))}>
+			<a class="card-link" href={href.album(a.id)} data-menu-focus>
 				<Cover albumId={a.id} hasCover={a.cover} size={176} class="card-cover" eager={eager} />
 				<span class="card-title">
 					{isCurrent && <PlayingBars active={player.playing.value} />}

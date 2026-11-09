@@ -31,6 +31,17 @@ export function SettingsView() {
 		[t.statSize, formatBytes(s.bytes, locale.value)],
 		[t.statDuration, t.hours(hours, minutes)],
 	];
+	const qs = s.quality;
+	const analysed = qs ? (qs.lossless ?? 0) + (qs.upsampled ?? 0) + (qs.lossy ?? 0) + (qs.unknown ?? 0) : 0;
+	const quality: [string, number, string | undefined][] = qs
+		? [
+				[t.qLossless, qs.lossless ?? 0, "lossless"],
+				[t.qUpsampled, qs.upsampled ?? 0, "upsampled"],
+				[t.qLossy, qs.lossy ?? 0, "lossy"],
+				[t.qUnknown, qs.unknown ?? 0, undefined],
+			]
+		: [];
+	if (qs && s.tracks > analysed) quality.push([t.qNotAnalysed, s.tracks - analysed, undefined]);
 	const kb: [string, string][] = [
 		["Space", t.kbPlay],
 		["← →", t.kbSeek],
@@ -38,6 +49,7 @@ export function SettingsView() {
 		["M", t.kbMute],
 		["/  ⌘K", t.kbSearch],
 		["L", t.kbLyrics],
+		["S", t.kbSpectrum],
 	];
 
 	return (
@@ -70,6 +82,24 @@ export function SettingsView() {
 					))}
 				</dl>
 			</section>
+
+			{qs && (
+				<section class="settings-group">
+					<h2 class="section-title">{t.qualityTitle}</h2>
+					<dl class="stats">
+						{quality.map(([k, n, v]) => (
+							<div key={k} class="stat">
+								<dt>
+									{v && <i class="vdot" data-v={v} aria-hidden="true" />}
+									{k}
+								</dt>
+								<dd>{fmtN(n)}</dd>
+							</div>
+						))}
+					</dl>
+					<p class="muted settings-note">{t.qualityNote}</p>
+				</section>
+			)}
 
 			<section class="settings-group">
 				<h2 class="section-title">{t.meterTitle}</h2>
