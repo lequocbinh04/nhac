@@ -22,19 +22,21 @@ Stream your own FLAC, ALAC and WAV files at full resolution, up to 24-bit / 192 
 - **Waveform seek bar.** Every track gets a real loudness waveform computed once when you index your library.
 - **Is it really lossless?** The indexer draws a spectrogram of every track and flags files that are lossy or upsampled underneath their lossless container (an MP3 re-saved as FLAC, a CD rip padded to 24/96). See [how the check works](#is-it-really-lossless) and where it can be wrong.
 - **Stereo level meter.** Live L/R levels with peak hold on the Now Playing screen, read from the actual decoded signal (disabled on iOS, where WebKit would cut audio in the background).
+- **Synced lyrics.** Karaoke-style lyrics from embedded LRC tags or a `.lrc` file next to the track: the current line follows the music, tap a line to jump there, plain lyrics as a fallback.
+- **Share a song.** Copy a link to a track (optionally at a timestamp) or use the phone's share sheet. Opening it after signing in lands on that song, ready to play.
 - **Honest signal path.** Source → lossless decode → browser output, including the output sample rate the browser actually uses. No "bit-perfect" marketing.
 - **Gapless-ish transitions.** The next track is buffered shortly before the current one ends and swapped in on `ended`.
 - **Fast at any size.** Albums, songs and artists are virtualized; a 1,000+ album library scrolls smoothly. Progress, waveform and meter update outside the render cycle.
 - **Search that understands accents.** `mua` finds "Mưa" and "Mùa", `dem sai gon` finds "Đêm Sài Gòn". Results are ranked across artists, albums and songs, with the matched part highlighted.
 - **Feels native on phones.** Bottom tabs, a mini player and a full-screen Now Playing sheet with drag-to-dismiss, lock-screen controls via the Media Session API, safe-area aware, installable as a PWA.
 - **Remembers where you were.** Queue, position, volume, shuffle and repeat survive reloads, without touching the network until you press play.
-- **Keyboard first.** <kbd>Space</kbd> play/pause, <kbd>←</kbd>/<kbd>→</kbd> seek 10 s, <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> previous/next, <kbd>M</kbd> mute, <kbd>/</kbd> or <kbd>⌘K</kbd> search.
+- **Keyboard first.** <kbd>Space</kbd> play/pause, <kbd>←</kbd>/<kbd>→</kbd> seek 10 s, <kbd>Shift</kbd>+<kbd>←</kbd>/<kbd>→</kbd> previous/next, <kbd>M</kbd> mute, <kbd>/</kbd> or <kbd>⌘K</kbd> search, <kbd>L</kbd> lyrics, <kbd>S</kbd> spectrogram. Right-click (or <kbd>Shift</kbd>+<kbd>F10</kbd>) any track or album for play next, add to queue and share.
 - **Private by default.** One password, HMAC-signed HttpOnly session cookie, login rate limiting, and nothing of your library is visible before you sign in.
 - **English and Vietnamese UI**, picked from your browser language or set in Settings.
 - **Motion that respects you.** Short, interruptible transitions on transform and opacity only, and a full `prefers-reduced-motion` path.
 
 <div align="center">
-<img src="docs/screenshots/mobile.jpg" alt="nhac on a phone: library, accent-insensitive search for 'mua', and the login screen" width="100%">
+<img src="docs/screenshots/mobile.jpg" alt="nhac on a phone: library, accent-insensitive search for 'mua', and the login screen with its vector record" width="100%">
 </div>
 
 <table>
@@ -43,8 +45,12 @@ Stream your own FLAC, ALAC and WAV files at full resolution, up to 24-bit / 192 
 <td width="50%"><img src="docs/screenshots/desktop-nowplaying.jpg" alt="Now Playing with waveform, stereo level meter and signal path"></td>
 </tr>
 <tr>
+<td width="50%"><img src="docs/screenshots/desktop-lyrics.jpg" alt="Synced lyrics following the music"></td>
+<td width="50%"><img src="docs/screenshots/desktop-spectrum.jpg" alt="Spectrogram flagging a lossy source with a 16.9 kHz brickwall"></td>
+</tr>
+<tr>
 <td width="50%"><img src="docs/screenshots/desktop-search.jpg" alt="Search for 'mua' matching Mưa and Mùa"></td>
-<td width="50%"><img src="docs/screenshots/desktop-login.jpg" alt="Login screen"></td>
+<td width="50%"><img src="docs/screenshots/desktop-login.jpg" alt="Login screen with a vector record"></td>
 </tr>
 </table>
 
