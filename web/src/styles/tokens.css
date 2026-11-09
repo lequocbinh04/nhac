@@ -1,0 +1,48 @@
+/* Design tokens: direction "B4 · Meter". Every color, radius, duration and easing comes from here. */
+:root {
+	color-scheme: dark;
+
+	--bg: #0b1014;
+	--bg-deep: #070b0e;
+	--panel: #0f161b;
+	--raise: #152027;
+	--raise-2: #1a2730;
+	--track: #22313a;
+	--line: #1b262d;
+	--line-2: #2a3943;
+	--t1: #e6eef1;
+	--t2: #9daeb6;
+	--t3: #7e9099;
+	--acc: #6fc2b6;
+	--acc-soft: rgb(111 194 182 / 0.14);
+	--acc-ink: #06211d;
+	--danger: #e58b7b;
+
+	--font-sans: "Inter Variable", Inter, system-ui, -apple-system, sans-serif;
+	--font-mono: "JetBrains Mono", ui-monospace, SFMono-Regular, monospace;
+
+	--r-xs: 6px;
+	--r-sm: 8px;
+	--r-md: 12px;
+	--r-lg: 16px;
+	--r-xl: 24px;
+	--r-pill: 999px;
+
+	--s-1: 4px;
+	--s-2: 8px;
+	--s-3: 12px;
+	--s-4: 16px;
+	--s-5: 24px;
+	--s-6: 32px;
+	--s-7: 48px;
+	--s-8: 64px;
+
+	/* Motion (Emil Kowalski): strong custom curves, UI under 300ms, exits faster than enters. */
+	--ease-out: cubic-bezier(0.23, 1, 0.32, 1);
+	--ease-in-out: cubic-bezier(0.77, 0, 0.175, 1);
+	--ease-drawer: cubic-bezier(0.32, 0.72, 0, 1);
+	--d-press: 140ms;
+	--d-fast: 160ms;
+	--d-base: 220ms;
+	--d-sheet: 420ms;
+}

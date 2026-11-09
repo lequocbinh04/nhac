@@ -1,0 +1,13 @@
+node_modules/
+.wrangler/
+.dev.vars
+.dev.vars.*
+.env
+.env.*
+# Personal deployment config (copy from wrangler.example.jsonc)
+wrangler.jsonc
+# Generated library data (never commit your library)
+library-data/
+__pycache__/
+*.pyc
+.DS_Store

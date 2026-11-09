@@ -1,0 +1,37 @@
+// Copy to wrangler.jsonc and fill in your values: cp wrangler.example.jsonc wrangler.jsonc
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "nhac",
+  // "account_id": "<your Cloudflare account id>",
+  "main": "src/index.ts",
+  "compatibility_date": "2026-11-09",
+  "assets": {
+    "directory": "./public",
+    "binding": "ASSETS",
+    // Every request passes through the Worker first, so the password gate covers the UI too.
+    "run_worker_first": true
+  },
+  "vars": {
+    // "r2" reads the MUSIC bucket binding below; "s3" reads any S3-compatible bucket.
+    "STORAGE": "r2",
+    // Where build_library.py output lives inside the bucket (library.json + covers/).
+    "LIBRARY_PREFIX": "_nhac/",
+    // Only used when STORAGE is "s3". Path-style endpoint, e.g. https://s3.us-east-1.amazonaws.com
+    // or https://<accountid>.r2.cloudflarestorage.com or your MinIO/B2/Wasabi endpoint.
+    "S3_ENDPOINT": "",
+    "S3_BUCKET": "",
+    "S3_REGION": "auto"
+  },
+  // Remove this block when STORAGE is "s3".
+  "r2_buckets": [{ "binding": "MUSIC", "bucket_name": "music" }],
+  "ratelimits": [
+    // Login attempts. Single-user app, so one global key.
+    { "name": "LOGIN_LIMITER", "namespace_id": "2701", "simple": { "limit": 8, "period": 60 } }
+  ],
+  "secrets": {
+    // wrangler secret put APP_PASSWORD / SESSION_SECRET
+    // (S3 mode also needs S3_ACCESS_KEY_ID and S3_SECRET_ACCESS_KEY, see src/env.d.ts)
+    "required": ["APP_PASSWORD", "SESSION_SECRET"]
+  },
+  "observability": { "enabled": true, "head_sampling_rate": 1, "traces": { "enabled": true } }
+}
