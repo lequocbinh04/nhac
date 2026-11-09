@@ -1,0 +1,354 @@
+// UI strings. Vietnamese is the reference dictionary; English must cover every key (type-checked).
+import { computed, signal } from "@preact/signals";
+
+const vi = {
+	appName: "Nhạc",
+	navAlbums: "Album",
+	navArtists: "Nghệ sĩ",
+	navSongs: "Bài hát",
+	navQueue: "Hàng chờ",
+	navSearch: "Tìm kiếm",
+	navSettings: "Cài đặt",
+	navLibrary: "Thư viện",
+	mainNav: "Điều hướng chính",
+	libraryNav: "Mục thư viện",
+	skipToContent: "Bỏ qua đến nội dung",
+
+	searchPlaceholder: "Tìm album, nghệ sĩ, bài hát",
+	searchLabel: "Tìm kiếm",
+	searchClear: "Xoá nội dung tìm",
+	searchCancel: "Huỷ",
+	searchHint: "Không phân biệt dấu",
+	searchMatches: (n: number) => `${n} bài khớp`,
+	searchEmptyTitle: "Tìm trong thư viện",
+	searchEmptyBody: "Gõ tên bài, album hoặc nghệ sĩ. Có dấu hay không dấu đều được.",
+	searchNoResults: (q: string) => `Không có kết quả cho “${q}”`,
+	searchNoResultsBody: "Thử từ khoá ngắn hơn hoặc kiểm tra chính tả.",
+	topResult: "Kết quả hàng đầu",
+	seeAll: "Xem tất cả",
+	showLess: "Thu gọn",
+
+	kindAlbum: "Album",
+	kindArtist: "Nghệ sĩ",
+	kindSong: "Bài hát",
+
+	filterAll: "Tất cả",
+	filterHiRes: "Hi-Res 24-bit",
+	filterCd: "CD 16/44.1",
+	filterLabel: "Lọc theo chất lượng",
+	sortLabel: "Sắp xếp",
+	sortArtist: "Nghệ sĩ",
+	sortTitle: "Tên album",
+	sortYear: "Năm phát hành",
+	countAlbums: (n: number) => `${fmtN(n)} album`,
+	countArtists: (n: number) => `${fmtN(n)} nghệ sĩ`,
+	countTracks: (n: number) => `${fmtN(n)} bài`,
+	hiResTracks: (n: number) => `${fmtN(n)} bài hi-res`,
+
+	back: "Quay lại",
+	play: "Phát",
+	pause: "Tạm dừng",
+	shuffle: "Trộn bài",
+	shuffleOn: "Trộn bài: bật",
+	shuffleOff: "Trộn bài: tắt",
+	repeatOff: "Lặp lại: tắt",
+	repeatAll: "Lặp lại: tất cả",
+	repeatOne: "Lặp lại: một bài",
+	previous: "Bài trước",
+	next: "Bài tiếp",
+	mute: "Tắt tiếng",
+	unmute: "Bật tiếng",
+	volume: "Âm lượng",
+	seek: "Vị trí phát",
+	more: "Thêm",
+	playAlbum: (t: string) => `Phát ${t}`,
+	playNext: "Phát tiếp theo",
+	addToQueue: "Thêm vào hàng chờ",
+	goToAlbum: "Đến album",
+	goToArtist: "Đến nghệ sĩ",
+	addedNext: (t: string) => `Sẽ phát tiếp: ${t}`,
+	addedQueue: (t: string) => `Đã thêm vào hàng chờ: ${t}`,
+
+	moreFrom: (a: string) => `Thêm từ ${a}`,
+	viewArtist: "Xem nghệ sĩ",
+	albumsHeading: "Album",
+	songsHeading: "Bài hát",
+	appearsOn: "Có mặt trong",
+	trackNo: "#",
+	colTitle: "Tên bài",
+	colAlbum: "Album",
+	colSpec: "Định dạng",
+	colTime: "Thời lượng",
+
+	queueTitle: "Hàng chờ",
+	nowPlaying: "Đang phát",
+	upNext: "Tiếp theo",
+	queueEmpty: "Hàng chờ trống",
+	queueEmptyBody: "Chọn một album hoặc bài hát để bắt đầu.",
+	queueNothingNext: "Không còn bài nào tiếp theo.",
+	clearQueue: "Xoá hàng chờ",
+	remove: "Bỏ khỏi hàng chờ",
+	reorder: "Kéo để sắp xếp. Alt + mũi tên để di chuyển.",
+	browseAlbums: "Xem album",
+
+	openNowPlaying: "Mở màn Đang phát",
+	closeNowPlaying: "Đóng màn Đang phát",
+	nothingPlaying: "Chưa phát bài nào",
+	pickSomething: "Chọn một bài để bắt đầu",
+	signalLevel: "Mức tín hiệu",
+	signalScale: "dBFS · giữ đỉnh",
+	channelL: "L",
+	channelR: "R",
+	pathSource: "Nguồn",
+	pathDecode: "Giải mã",
+	pathOutput: "Đầu ra",
+	pathLossless: "Lossless",
+	pathBitExact: "bit-exact",
+	pathLossy: "Nén có mất dữ liệu",
+	pathBrowser: "Trình duyệt",
+	pathNote: "Giải mã không mất dữ liệu trong trình duyệt. Trình duyệt và hệ điều hành có thể đổi tần số mẫu khi phát ra thiết bị.",
+	pathNoteLossy: "Tệp nén có mất dữ liệu. Trình duyệt và hệ điều hành có thể đổi tần số mẫu khi phát ra thiết bị.",
+	signalPath: "Đường tín hiệu",
+	remaining: "Còn lại",
+	elapsed: "Đã phát",
+
+	loadingLibrary: "Đang tải thư viện",
+	libraryError: "Không tải được thư viện",
+	libraryErrorBody: "Kiểm tra kết nối rồi thử lại.",
+	retry: "Thử lại",
+	emptyLibrary: "Thư viện trống",
+	emptyLibraryBody: "Chạy tools/build_library.py để quét nhạc và tải thư viện lên bucket.",
+	notFound: "Không tìm thấy trang này",
+	notFoundBody: "Album hoặc nghệ sĩ này không còn trong thư viện.",
+	noResultsFilter: "Không có album nào khớp bộ lọc",
+
+	playFailed: (t: string) => `Không phát được “${t}”, chuyển bài`,
+	playStopped: "Không phát được. Kiểm tra kết nối rồi thử lại.",
+	playBlocked: "Nhấn Phát để bắt đầu",
+
+	settingsTitle: "Cài đặt",
+	language: "Ngôn ngữ",
+	languageAuto: "Theo trình duyệt",
+	libraryStats: "Thư viện",
+	statTracks: "Bài hát",
+	statAlbums: "Album",
+	statArtists: "Nghệ sĩ",
+	statSize: "Dung lượng",
+	statDuration: "Tổng thời lượng",
+	statHiRes: "Bài hi-res",
+	meterTitle: "Đồng hồ mức",
+	meterOn: "Đang dùng Web Audio để đo mức L/R thật trên màn Đang phát.",
+	meterOff: "Tắt trên thiết bị này: iOS tạm dừng Web Audio khi chạy nền và sẽ làm ngắt nhạc.",
+	meterUnavailable: "Trình duyệt không hỗ trợ Web Audio.",
+	shortcuts: "Phím tắt",
+	kbPlay: "Phát / tạm dừng",
+	kbSeek: "Tua 10 giây",
+	kbTrack: "Bài trước / bài tiếp",
+	kbMute: "Tắt tiếng",
+	kbSearch: "Tìm kiếm",
+	account: "Phiên đăng nhập",
+	logout: "Đăng xuất",
+	about: "Giới thiệu",
+	aboutBody: "nhac là trình phát nhạc lossless tự lưu trữ, mã nguồn mở (MIT), chạy trên Cloudflare Workers.",
+	hours: (h: number, m: number) => (h > 0 ? `${fmtN(h)} giờ ${m} phút` : `${m} phút`),
+};
+
+export type Dict = typeof vi;
+
+const en: Dict = {
+	appName: "Nhạc",
+	navAlbums: "Albums",
+	navArtists: "Artists",
+	navSongs: "Songs",
+	navQueue: "Queue",
+	navSearch: "Search",
+	navSettings: "Settings",
+	navLibrary: "Library",
+	mainNav: "Main navigation",
+	libraryNav: "Library sections",
+	skipToContent: "Skip to content",
+
+	searchPlaceholder: "Search albums, artists, songs",
+	searchLabel: "Search",
+	searchClear: "Clear search",
+	searchCancel: "Cancel",
+	searchHint: "Accent-insensitive",
+	searchMatches: (n) => `${n} matching ${n === 1 ? "song" : "songs"}`,
+	searchEmptyTitle: "Search your library",
+	searchEmptyBody: "Type a song, album or artist. Accents are optional.",
+	searchNoResults: (q) => `No results for “${q}”`,
+	searchNoResultsBody: "Try a shorter word or check the spelling.",
+	topResult: "Top result",
+	seeAll: "See all",
+	showLess: "Show less",
+
+	kindAlbum: "Album",
+	kindArtist: "Artist",
+	kindSong: "Song",
+
+	filterAll: "All",
+	filterHiRes: "Hi-Res 24-bit",
+	filterCd: "CD 16/44.1",
+	filterLabel: "Filter by quality",
+	sortLabel: "Sort",
+	sortArtist: "Artist",
+	sortTitle: "Title",
+	sortYear: "Year",
+	countAlbums: (n) => `${fmtN(n)} ${n === 1 ? "album" : "albums"}`,
+	countArtists: (n) => `${fmtN(n)} ${n === 1 ? "artist" : "artists"}`,
+	countTracks: (n) => `${fmtN(n)} ${n === 1 ? "song" : "songs"}`,
+	hiResTracks: (n) => `${fmtN(n)} hi-res`,
+
+	back: "Back",
+	play: "Play",
+	pause: "Pause",
+	shuffle: "Shuffle",
+	shuffleOn: "Shuffle: on",
+	shuffleOff: "Shuffle: off",
+	repeatOff: "Repeat: off",
+	repeatAll: "Repeat: all",
+	repeatOne: "Repeat: one",
+	previous: "Previous",
+	next: "Next",
+	mute: "Mute",
+	unmute: "Unmute",
+	volume: "Volume",
+	seek: "Playback position",
+	more: "More",
+	playAlbum: (t) => `Play ${t}`,
+	playNext: "Play next",
+	addToQueue: "Add to queue",
+	goToAlbum: "Go to album",
+	goToArtist: "Go to artist",
+	addedNext: (t) => `Playing next: ${t}`,
+	addedQueue: (t) => `Added to queue: ${t}`,
+
+	moreFrom: (a) => `More from ${a}`,
+	viewArtist: "View artist",
+	albumsHeading: "Albums",
+	songsHeading: "Songs",
+	appearsOn: "Appears on",
+	trackNo: "#",
+	colTitle: "Title",
+	colAlbum: "Album",
+	colSpec: "Format",
+	colTime: "Time",
+
+	queueTitle: "Queue",
+	nowPlaying: "Now playing",
+	upNext: "Up next",
+	queueEmpty: "The queue is empty",
+	queueEmptyBody: "Pick an album or a song to start.",
+	queueNothingNext: "Nothing else is queued.",
+	clearQueue: "Clear queue",
+	remove: "Remove from queue",
+	reorder: "Drag to reorder. Alt + arrow keys to move.",
+	browseAlbums: "Browse albums",
+
+	openNowPlaying: "Open Now Playing",
+	closeNowPlaying: "Close Now Playing",
+	nothingPlaying: "Nothing playing",
+	pickSomething: "Pick a song to start",
+	signalLevel: "Signal level",
+	signalScale: "dBFS · peak hold",
+	channelL: "L",
+	channelR: "R",
+	pathSource: "Source",
+	pathDecode: "Decode",
+	pathOutput: "Output",
+	pathLossless: "Lossless",
+	pathBitExact: "bit-exact",
+	pathLossy: "Lossy",
+	pathBrowser: "Browser",
+	pathNote: "Decoded losslessly in the browser. The browser and OS may resample on the way to your device.",
+	pathNoteLossy: "Lossy file. The browser and OS may resample on the way to your device.",
+	signalPath: "Signal path",
+	remaining: "Remaining",
+	elapsed: "Elapsed",
+
+	loadingLibrary: "Loading library",
+	libraryError: "Couldn't load the library",
+	libraryErrorBody: "Check your connection and try again.",
+	retry: "Try again",
+	emptyLibrary: "Your library is empty",
+	emptyLibraryBody: "Run tools/build_library.py to scan your music and upload the index to the bucket.",
+	notFound: "Page not found",
+	notFoundBody: "This album or artist is no longer in the library.",
+	noResultsFilter: "No albums match this filter",
+
+	playFailed: (t) => `Couldn't play “${t}”, skipping`,
+	playStopped: "Playback failed. Check your connection and try again.",
+	playBlocked: "Press Play to start",
+
+	settingsTitle: "Settings",
+	language: "Language",
+	languageAuto: "Browser default",
+	libraryStats: "Library",
+	statTracks: "Songs",
+	statAlbums: "Albums",
+	statArtists: "Artists",
+	statSize: "Size",
+	statDuration: "Total length",
+	statHiRes: "Hi-res songs",
+	meterTitle: "Level meter",
+	meterOn: "Uses Web Audio to measure real L/R levels on the Now Playing screen.",
+	meterOff: "Off on this device: iOS suspends Web Audio in the background, which would cut the music.",
+	meterUnavailable: "This browser doesn't support Web Audio.",
+	shortcuts: "Keyboard shortcuts",
+	kbPlay: "Play / pause",
+	kbSeek: "Seek 10 seconds",
+	kbTrack: "Previous / next song",
+	kbMute: "Mute",
+	kbSearch: "Search",
+	account: "Session",
+	logout: "Sign out",
+	about: "About",
+	aboutBody: "nhac is an open-source (MIT), self-hosted lossless music player running on Cloudflare Workers.",
+	hours: (h, m) => (h > 0 ? `${fmtN(h)} h ${m} min` : `${m} min`),
+};
+
+export type Lang = "vi" | "en";
+export type LangPref = Lang | "auto";
+
+const PREF_KEY = "nhac.lang";
+
+function readPref(): LangPref {
+	try {
+		const v = localStorage.getItem(PREF_KEY);
+		if (v === "vi" || v === "en") return v;
+	} catch {
+		// Storage can be unavailable (private mode); fall back to auto.
+	}
+	return "auto";
+}
+
+function browserLang(): Lang {
+	const langs = typeof navigator === "undefined" ? [] : navigator.languages?.length ? navigator.languages : [navigator.language];
+	for (const l of langs) {
+		const base = l.toLowerCase().slice(0, 2);
+		if (base === "vi") return "vi";
+		if (base === "en") return "en";
+	}
+	return "en";
+}
+
+export const langPref = signal<LangPref>(readPref());
+export const lang = computed<Lang>(() => (langPref.value === "auto" ? browserLang() : langPref.value));
+export const locale = computed(() => (lang.value === "vi" ? "vi-VN" : "en-US"));
+const dicts: Record<Lang, Dict> = { vi, en };
+export const dict = computed(() => dicts[lang.value]);
+
+export function setLangPref(p: LangPref) {
+	langPref.value = p;
+	try {
+		if (p === "auto") localStorage.removeItem(PREF_KEY);
+		else localStorage.setItem(PREF_KEY, p);
+	} catch {
+		// Not persisted; the choice still applies for this session.
+	}
+}
+
+/** Locale-aware integer: 1.155 (vi) / 1,155 (en). */
+export function fmtN(n: number): string {
+	return new Intl.NumberFormat(locale.value).format(n);
+}
