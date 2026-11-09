@@ -11,6 +11,7 @@ import "./styles/layout.css";
 import "./styles/components.css";
 import "./styles/views.css";
 import "./styles/nowplaying.css";
+import "./styles/lyrics.css";
 
 import { effect } from "@preact/signals";
 import { render } from "preact";
@@ -18,12 +19,14 @@ import { App } from "./app";
 import { dict, lang } from "./lib/i18n";
 import { installShortcuts } from "./lib/keyboard";
 import { loadLibrary } from "./lib/library";
+import { startLyrics } from "./lib/lyricsStore";
 import * as player from "./lib/player";
 import { nav, startRouter } from "./lib/router";
 import { searchText } from "./lib/ui";
 
 startRouter();
 installShortcuts();
+startLyrics();
 
 effect(() => {
 	document.documentElement.lang = lang.value;

@@ -37,6 +37,7 @@ export function SettingsView() {
 		["Shift ← →", t.kbTrack],
 		["M", t.kbMute],
 		["/  ⌘K", t.kbSearch],
+		["L", t.kbLyrics],
 	];
 
 	return (

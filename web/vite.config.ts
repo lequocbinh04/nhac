@@ -19,7 +19,7 @@ export default defineConfig({
 	},
 	// `npm run dev:web` serves the UI with HMR; API, streams and covers go to `wrangler dev`.
 	server: {
-		proxy: { "/api": worker, "/stream": worker, "/cover": worker },
+		proxy: { "/api": worker, "/stream": worker, "/cover": worker, "/lyrics": worker },
 	},
 	test: { include: ["src/**/*.test.ts"], environment: "node" },
 });

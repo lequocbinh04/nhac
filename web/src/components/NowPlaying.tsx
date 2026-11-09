@@ -6,16 +6,18 @@ import { codecLabel, formatRate, formatTime, isLossless } from "../lib/format";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
 import { MIN_SHARE_START_S, trackPath } from "../lib/links";
+import { lyrics } from "../lib/lyricsStore";
 import { meterBroken, meterSupport, outputRate } from "../lib/meter";
 import * as player from "../lib/player";
 import { href, navigate } from "../lib/router";
 import { shareLink, usesNativeShare } from "../lib/share";
-import { nowPlayingOpen } from "../lib/ui";
+import { lyricsView, nowPlayingOpen } from "../lib/ui";
 import { Cover } from "./Cover";
 import { ArtistLinks, Quality } from "./bits";
 import { Icon } from "./icons";
-import { LevelMeter } from "./Meter";
+import { LyricsPane } from "./Lyrics";
 import { openMenu } from "./Menu";
+import { LevelMeter } from "./Meter";
 import { Seekbar } from "./Seekbar";
 import { Time, Transport } from "./Transport";
 
@@ -86,6 +88,8 @@ export function NowPlaying() {
 	const c = catalog();
 	const info = tr ? c.album.get(tr.albumId) : undefined;
 	const native = usesNativeShare();
+	const hasLyrics = !!tr?.lyrics && lyrics.value.status !== "none";
+	const showLyrics = hasLyrics && lyricsView.value;
 	const sheet = useRef<HTMLDivElement>(null);
 	const scroller = useRef<HTMLDivElement>(null);
 	const closeBtn = useRef<HTMLButtonElement>(null);
@@ -136,7 +140,7 @@ export function NowPlaying() {
 		const onDown = (e: PointerEvent) => {
 			// Ignore extra fingers once a drag is tracked (multi-touch protection).
 			if (id !== null || !nowPlayingOpen.value || e.button !== 0) return;
-			if ((e.target as Element).closest(".seek, input, .menu")) return;
+			if ((e.target as Element).closest(".seek, input, .menu, .lyrics")) return;
 			if (e.pointerType === "mouse" && !(e.target as Element).closest(".np-head")) return;
 			id = e.pointerId;
 			startY = e.clientY;
@@ -214,6 +218,7 @@ export function NowPlaying() {
 			ref={sheet}
 			class="np"
 			data-open={open ? "" : undefined}
+			data-lyrics={showLyrics ? "" : undefined}
 			role="dialog"
 			aria-modal="true"
 			aria-label={t.nowPlaying}
@@ -227,6 +232,11 @@ export function NowPlaying() {
 					</button>
 					<span class="np-context">{info?.album.title ?? t.nowPlaying}</span>
 					<span class="np-head-actions">
+						{hasLyrics && (
+							<button type="button" class="icon-btn toggle" aria-label={t.lyrics} aria-pressed={showLyrics} onClick={() => (lyricsView.value = !lyricsView.value)}>
+								<Icon name="quotes" size={22} />
+							</button>
+						)}
 						<button type="button" class="icon-btn" aria-label={native ? t.share : t.copyLink} disabled={!tr} onClick={onShare}>
 							<Icon name={native ? "export" : "link"} size={22} />
 						</button>
@@ -250,6 +260,15 @@ export function NowPlaying() {
 							<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={480} eager alt={info?.album.title ?? ""} />
 						</div>
 						<div class="np-side">
+							{showLyrics && (
+								<div class="np-compact" aria-hidden="true">
+									<Cover albumId={tr.albumId} hasCover={!!info?.album.cover} size={48} eager />
+									<span class="np-compact-text">
+										<span class="np-compact-title">{tr.title}</span>
+										<span class="np-compact-artist">{tr.artist}</span>
+									</span>
+								</div>
+							)}
 							<div class="np-titles">
 								<h2 class="np-title">{tr.title}</h2>
 								<span class="np-artist">
@@ -264,11 +283,14 @@ export function NowPlaying() {
 									<Time mode="remaining" />
 								</div>
 							</div>
+							{showLyrics && <LyricsPane active={open} />}
 							<Transport size="lg" />
-							<section class="np-panel" aria-label={t.signalPath}>
-								{meterSupport === "on" && !meterBroken.value && <LevelMeter active={open} />}
-								<SignalPath track={tr} />
-							</section>
+							{!showLyrics && (
+								<section class="np-panel" aria-label={t.signalPath}>
+									{meterSupport === "on" && !meterBroken.value && <LevelMeter active={open} />}
+									<SignalPath track={tr} />
+								</section>
+							)}
 						</div>
 					</div>
 				)}

@@ -40,6 +40,9 @@ export function reducedMotion(): boolean {
 /** Now Playing sheet (mobile) / overlay (desktop). */
 export const nowPlayingOpen = signal(false);
 
+/** Now Playing shows lyrics instead of the signal panel (when the track has lyrics). */
+export const lyricsView = signal(false);
+
 /** Search text, shared by the desktop top bar field and the mobile search view field. */
 export const searchText = signal("");
 

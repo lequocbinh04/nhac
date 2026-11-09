@@ -5,6 +5,7 @@
 // When NHAC_MUSIC_DIR is set this Vite plugin answers, before the proxy to `wrangler dev`:
 //   GET  /api/library     -> ${NHAC_LIBRARY_DIR:-library-data}/library.json
 //   GET  /cover/<id>.jpg  -> ${NHAC_LIBRARY_DIR:-library-data}/covers/<id>.jpg
+//   GET  /lyrics/<id>     -> ${NHAC_LIBRARY_DIR:-library-data}/lyrics/<id>.lrc (text/plain; 404 when absent)
 //   GET  /stream/<key>    -> ${NHAC_MUSIC_DIR}/<key> with Range (206), HEAD, content types
 //   POST /api/logout      -> { ok: true }
 //   POST /api/login       -> { ok: true } (so the login page also works locally)
@@ -126,6 +127,11 @@ export function nhacDevServer(): Plugin {
 				if (path === "/api/login" && req.method === "POST") return send(res, 200, '{"ok":true}', "application/json; charset=utf-8");
 				if (path === "/api/library" && read) {
 					return void serveFile(req, res, resolve(libDir, "library.json"), "application/json; charset=utf-8", "no-cache");
+				}
+				if (path.startsWith("/lyrics/") && read) {
+					const id = path.slice("/lyrics/".length);
+					if (!/^[0-9a-f]{6,32}$/i.test(id)) return send(res, 404, "Not found");
+					return void serveFile(req, res, resolve(libDir, "lyrics", `${id}.lrc`), "text/plain; charset=utf-8", "private, max-age=3600");
 				}
 				if (path.startsWith("/cover/") && read) {
 					const name = path.slice("/cover/".length);

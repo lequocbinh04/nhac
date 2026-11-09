@@ -21,6 +21,8 @@ export interface Track {
 	albumId: string;
 	/** Optional base64 of 96 unsigned bytes: waveform amplitude bins over the whole track */
 	peaks?: string;
+	/** Lyrics available at GET /lyrics/<id>: LRC ("synced") or plain text */
+	lyrics?: "synced" | "plain";
 }
 
 export interface Album {

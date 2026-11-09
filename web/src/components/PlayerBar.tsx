@@ -2,11 +2,12 @@
 import { useEffect, useRef } from "preact/hooks";
 import { dict } from "../lib/i18n";
 import { catalog } from "../lib/library";
+import { lyrics } from "../lib/lyricsStore";
 import { isAppleMobile } from "../lib/meter";
 import * as player from "../lib/player";
 import { href, nav } from "../lib/router";
 import { onFrame } from "../lib/ticker";
-import { nowPlayingOpen } from "../lib/ui";
+import { lyricsView, nowPlayingOpen } from "../lib/ui";
 import { trackSpec } from "../lib/format";
 import { Cover } from "./Cover";
 import { ArtistLinks, Quality } from "./bits";
@@ -46,6 +47,26 @@ function Volume() {
 export function openNowPlaying(e: Event) {
 	(e.currentTarget as HTMLElement).dataset.opener = "";
 	nowPlayingOpen.value = true;
+}
+
+/** Opens Now Playing on the lyrics; only rendered when the current track has lyrics. */
+function LyricsButton({ size }: { size: number }) {
+	const t = dict.value;
+	const tr = player.current.value;
+	if (!tr?.lyrics || lyrics.value.status === "none") return null;
+	return (
+		<button
+			type="button"
+			class="icon-btn"
+			aria-label={t.showLyrics}
+			onClick={(e) => {
+				lyricsView.value = true;
+				openNowPlaying(e);
+			}}
+		>
+			<Icon name="quotes" size={size} />
+		</button>
+	);
 }
 
 export function PlayerBar() {
@@ -88,6 +109,7 @@ export function PlayerBar() {
 			</div>
 			<div class="pb-right">
 				{tr && <Quality track={tr} />}
+				<LyricsButton size={20} />
 				<a
 					href={href.queue()}
 					class="icon-btn toggle"
@@ -149,6 +171,7 @@ export function MiniPlayer() {
 					</span>
 				</span>
 			</button>
+			<LyricsButton size={22} />
 			<PlayButton size="sm" />
 			<button type="button" class="icon-btn strong" aria-label={t.next} onClick={() => player.next()}>
 				<Icon name="skipForward" size={24} />
