@@ -11,3 +11,6 @@ library-data/
 __pycache__/
 *.pyc
 .DS_Store
+# Demo library output (regenerate with tools/make_demo_library.py)
+demo-music/
+demo-library-data/
